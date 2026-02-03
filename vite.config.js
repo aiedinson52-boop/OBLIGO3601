@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
     server: {
@@ -7,6 +8,13 @@ export default defineConfig({
     },
     build: {
         outDir: 'dist',
-        sourcemap: true
-    }
+        sourcemap: true,
+        rollupOptions: {
+            input: {
+                main: resolve(__dirname, 'asistente.html')
+            }
+        }
+    },
+    // Serve asistente.html as the default page
+    appType: 'mpa'
 });

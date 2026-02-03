@@ -1,0 +1,14 @@
+{
+    "rewrites": [
+        {
+            "source": "/",
+            "destination": "/asistente.html"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/asistente.html"
+        }
+    ],
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist"
+}
