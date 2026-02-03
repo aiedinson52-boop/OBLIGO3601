@@ -849,6 +849,11 @@
             }
         }
     </style>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
@@ -870,6 +875,388 @@
     </style>
 
     <script>
+        // ============================================================================
+        // FIREBASE CONFIGURATION - ¡IMPORTANTE! Reemplaza con tus credenciales
+        // Crea un proyecto en https://console.firebase.google.com
+        // ============================================================================
+
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Inicializar Firebase
+        let firebaseApp = null;
+        let auth = null;
+        let db = null;
+        let currentUser = null;
+
+        // Verificar si Firebase está configurado
+        const isFirebaseConfigured = () => {
+            return firebaseConfig.apiKey !== "TU_API_KEY" &&
+                firebaseConfig.projectId !== "TU_PROYECTO";
+        };
+
+        // Inicializar Firebase si está configurado
+        if (typeof firebase !== 'undefined' && isFirebaseConfigured()) {
+            try {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                console.log('✅ Firebase inicializado correctamente');
+            } catch (error) {
+                console.error('❌ Error inicializando Firebase:', error);
+            }
+        }
+
+        // ============================================================================
+        // SISTEMA DE AUTENTICACIÓN
+        // ============================================================================
+
+        /**
+         * Registra un nuevo usuario
+         */
+        async function registrarUsuario(email, password, nombre) {
+            if (!auth) throw new Error('Firebase no configurado');
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+
+                // Actualizar perfil con nombre
+                await userCredential.user.updateProfile({
+                    displayName: nombre
+                });
+
+                // Crear documento de usuario en Firestore
+                await db.collection('usuarios').doc(userCredential.user.uid).set({
+                    nombre: nombre,
+                    email: email,
+                    fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log('✅ Usuario registrado:', email);
+                return userCredential.user;
+            } catch (error) {
+                console.error('Error en registro:', error);
+                throw traducirErrorFirebase(error);
+            }
+        }
+
+        /**
+         * Inicia sesión
+         */
+        async function iniciarSesion(email, password) {
+            if (!auth) throw new Error('Firebase no configurado');
+
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('✅ Sesión iniciada:', email);
+                return userCredential.user;
+            } catch (error) {
+                console.error('Error en login:', error);
+                throw traducirErrorFirebase(error);
+            }
+        }
+
+        /**
+         * Cierra la sesión actual
+         */
+        async function cerrarSesion() {
+            if (!auth) return;
+
+            try {
+                await auth.signOut();
+                currentUser = null;
+                appState.tareas = [];
+                console.log('✅ Sesión cerrada');
+                renderizarLogin();
+            } catch (error) {
+                console.error('Error cerrando sesión:', error);
+            }
+        }
+
+        /**
+         * Traduce errores de Firebase al español
+         */
+        function traducirErrorFirebase(error) {
+            const errores = {
+                'auth/email-already-in-use': 'Este correo ya está registrado',
+                'auth/invalid-email': 'Correo electrónico inválido',
+                'auth/operation-not-allowed': 'Operación no permitida',
+                'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+                'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
+                'auth/user-not-found': 'No existe cuenta con este correo',
+                'auth/wrong-password': 'Contraseña incorrecta',
+                'auth/too-many-requests': 'Demasiados intentos. Intente más tarde',
+                'auth/network-request-failed': 'Error de conexión. Verifique su internet'
+            };
+
+            return new Error(errores[error.code] || error.message);
+        }
+
+        // ============================================================================
+        // ALMACENAMIENTO DE TAREAS EN FIRESTORE
+        // ============================================================================
+
+        /**
+         * Carga las tareas del usuario desde Firestore
+         */
+        async function cargarTareasFirestore() {
+            if (!db || !currentUser) return [];
+
+            try {
+                const snapshot = await db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .collection('tareas')
+                    .orderBy('fecha', 'asc')
+                    .get();
+
+                const tareas = [];
+                snapshot.forEach(doc => {
+                    tareas.push({ id: doc.id, ...doc.data() });
+                });
+
+                console.log(`📋 ${tareas.length} tareas cargadas de la nube`);
+                return tareas;
+            } catch (error) {
+                console.error('Error cargando tareas:', error);
+                return [];
+            }
+        }
+
+        /**
+         * Guarda una tarea en Firestore
+         */
+        async function guardarTareaFirestore(tarea) {
+            if (!db || !currentUser) return null;
+
+            try {
+                const tareaData = { ...tarea };
+                delete tareaData.id; // Firestore genera su propio ID
+
+                if (tarea.id && !tarea.id.startsWith('temp_')) {
+                    // Actualizar tarea existente
+                    await db.collection('usuarios')
+                        .doc(currentUser.uid)
+                        .collection('tareas')
+                        .doc(tarea.id)
+                        .set(tareaData, { merge: true });
+                    return tarea.id;
+                } else {
+                    // Crear nueva tarea
+                    const docRef = await db.collection('usuarios')
+                        .doc(currentUser.uid)
+                        .collection('tareas')
+                        .add(tareaData);
+                    return docRef.id;
+                }
+            } catch (error) {
+                console.error('Error guardando tarea:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Elimina una tarea de Firestore
+         */
+        async function eliminarTareaFirestore(tareaId) {
+            if (!db || !currentUser) return false;
+
+            try {
+                await db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .collection('tareas')
+                    .doc(tareaId)
+                    .delete();
+                return true;
+            } catch (error) {
+                console.error('Error eliminando tarea:', error);
+                return false;
+            }
+        }
+
+        /**
+         * Migra tareas locales a Firestore (primera vez)
+         */
+        async function migrarTareasLocales() {
+            if (!db || !currentUser) return;
+
+            const tareasLocales = JSON.parse(localStorage.getItem('tareasObligo360') || '[]');
+            if (tareasLocales.length === 0) return;
+
+            console.log(`📤 Migrando ${tareasLocales.length} tareas locales a la nube...`);
+
+            for (const tarea of tareasLocales) {
+                await guardarTareaFirestore(tarea);
+            }
+
+            // Limpiar localStorage después de migrar
+            localStorage.removeItem('tareasObligo360');
+            mostrarToast(`✅ ${tareasLocales.length} tareas migradas a tu cuenta`, 'success');
+        }
+
+        // ============================================================================
+        // INTERFAZ DE LOGIN/REGISTRO
+        // ============================================================================
+
+        function renderizarLogin() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4);">
+                    <div style="background: var(--glass-bg); backdrop-filter: var(--glass-blur); border-radius: var(--radius-2xl); border: 1px solid var(--glass-border); box-shadow: var(--shadow-xl); padding: var(--space-8); max-width: 420px; width: 100%;">
+                        <div style="text-align: center; margin-bottom: var(--space-6);">
+                            <img src="logo-obligo360.png" alt="Obligo360" style="height: 60px; margin-bottom: var(--space-4);">
+                            <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-400)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Bienvenido</h1>
+                            <p style="color: var(--color-gray-500); font-size: var(--font-size-sm); margin-top: var(--space-2);">Tu asistente para cumplir sin estrés</p>
+                        </div>
+                        
+                        <div id="auth-form-container">
+                            ${renderizarFormularioLogin()}
+                        </div>
+                        
+                        <div style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-gray-200); text-align: center;">
+                            <p id="auth-toggle-text" style="color: var(--color-gray-500); font-size: var(--font-size-sm);">
+                                ¿No tienes cuenta? 
+                                <a href="#" onclick="toggleAuthForm('register'); return false;" style="color: var(--color-primary-500); font-weight: var(--font-weight-semibold); text-decoration: none;">Regístrate</a>
+                            </p>
+                        </div>
+                        
+                        ${!isFirebaseConfigured() ? `
+                        <div style="margin-top: var(--space-4); padding: var(--space-3); background: var(--color-warning-light); border-radius: var(--radius-md); border-left: 4px solid var(--color-warning);">
+                            <p style="color: var(--color-gray-700); font-size: var(--font-size-xs);">
+                                ⚠️ <strong>Firebase no configurado.</strong> Edita las credenciales en el código para habilitar la autenticación.
+                            </p>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderizarFormularioLogin() {
+            return `
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="login-email">Correo electrónico</label>
+                        <input type="email" id="login-email" class="form-input" placeholder="tu@correo.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" class="form-input" placeholder="••••••••" required minlength="6">
+                    </div>
+                    <div id="login-error" style="display: none; color: var(--color-danger); font-size: var(--font-size-sm); margin-bottom: var(--space-3); padding: var(--space-2); background: var(--color-danger-light); border-radius: var(--radius-sm);"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: var(--space-4);" id="login-btn">
+                        Iniciar Sesión
+                    </button>
+                </form>
+            `;
+        }
+
+        function renderizarFormularioRegistro() {
+            return `
+                <form id="register-form" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="register-name">Nombre</label>
+                        <input type="text" id="register-name" class="form-input" placeholder="Tu nombre" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="register-email">Correo electrónico</label>
+                        <input type="email" id="register-email" class="form-input" placeholder="tu@correo.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="register-password">Contraseña</label>
+                        <input type="password" id="register-password" class="form-input" placeholder="Mínimo 6 caracteres" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="register-confirm">Confirmar contraseña</label>
+                        <input type="password" id="register-confirm" class="form-input" placeholder="Repite tu contraseña" required minlength="6">
+                    </div>
+                    <div id="register-error" style="display: none; color: var(--color-danger); font-size: var(--font-size-sm); margin-bottom: var(--space-3); padding: var(--space-2); background: var(--color-danger-light); border-radius: var(--radius-sm);"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: var(--space-4);" id="register-btn">
+                        Crear Cuenta
+                    </button>
+                </form>
+            `;
+        }
+
+        function toggleAuthForm(mode) {
+            const container = document.getElementById('auth-form-container');
+            const toggleText = document.getElementById('auth-toggle-text');
+
+            if (mode === 'register') {
+                container.innerHTML = renderizarFormularioRegistro();
+                toggleText.innerHTML = `
+                    ¿Ya tienes cuenta? 
+                    <a href="#" onclick="toggleAuthForm('login'); return false;" style="color: var(--color-primary-500); font-weight: var(--font-weight-semibold); text-decoration: none;">Inicia sesión</a>
+                `;
+            } else {
+                container.innerHTML = renderizarFormularioLogin();
+                toggleText.innerHTML = `
+                    ¿No tienes cuenta? 
+                    <a href="#" onclick="toggleAuthForm('register'); return false;" style="color: var(--color-primary-500); font-weight: var(--font-weight-semibold); text-decoration: none;">Regístrate</a>
+                `;
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            const btnEl = document.getElementById('login-btn');
+
+            errorEl.style.display = 'none';
+            btnEl.disabled = true;
+            btnEl.textContent = 'Iniciando sesión...';
+
+            try {
+                await iniciarSesion(email, password);
+                // El observer de auth manejará la redirección
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+                btnEl.disabled = false;
+                btnEl.textContent = 'Iniciar Sesión';
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const nombre = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirm = document.getElementById('register-confirm').value;
+            const errorEl = document.getElementById('register-error');
+            const btnEl = document.getElementById('register-btn');
+
+            if (password !== confirm) {
+                errorEl.textContent = 'Las contraseñas no coinciden';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            errorEl.style.display = 'none';
+            btnEl.disabled = true;
+            btnEl.textContent = 'Creando cuenta...';
+
+            try {
+                await registrarUsuario(email, password, nombre);
+                mostrarToast('¡Cuenta creada exitosamente!', 'success');
+                // El observer de auth manejará la redirección
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+                btnEl.disabled = false;
+                btnEl.textContent = 'Crear Cuenta';
+            }
+        }
+
         // ============================================================================
         // ASISTENTE DE VOZ COLOMBIANO - VERSIÓN STANDALONE
         // Zona horaria: America/Bogota (UTC-5)
@@ -1290,25 +1677,49 @@
         }
 
         function guardarTareas() {
+            // Siempre guardar en localStorage como respaldo
             localStorage.setItem('asistente_tareas', JSON.stringify(appState.tareas));
         }
 
-        function agregarTarea(tarea) {
+        async function agregarTarea(tarea) {
             appState.tareas.push(tarea);
             guardarTareas();
+
+            // Sincronizar con Firestore si está autenticado
+            if (currentUser && db) {
+                const firebaseId = await guardarTareaFirestore(tarea);
+                if (firebaseId) {
+                    // Actualizar el ID de la tarea con el de Firestore
+                    const idx = appState.tareas.findIndex(t => t.id === tarea.id);
+                    if (idx !== -1) {
+                        appState.tareas[idx].id = firebaseId;
+                        guardarTareas();
+                    }
+                }
+            }
         }
 
-        function actualizarTarea(id, cambios) {
+        async function actualizarTarea(id, cambios) {
             const idx = appState.tareas.findIndex(t => t.id === id);
             if (idx !== -1) {
                 appState.tareas[idx] = { ...appState.tareas[idx], ...cambios };
                 guardarTareas();
+
+                // Sincronizar con Firestore si está autenticado
+                if (currentUser && db) {
+                    await guardarTareaFirestore(appState.tareas[idx]);
+                }
             }
         }
 
-        function eliminarTareaById(id) {
+        async function eliminarTareaById(id) {
             appState.tareas = appState.tareas.filter(t => t.id !== id);
             guardarTareas();
+
+            // Sincronizar con Firestore si está autenticado
+            if (currentUser && db) {
+                await eliminarTareaFirestore(id);
+            }
         }
 
         // ============================================================================
@@ -1658,6 +2069,21 @@
           <span id="current-date" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
           <span id="current-time" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: #ffffff; font-family: 'Consolas', monospace; text-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
         </div>
+        ${currentUser ? `
+        <div id="user-menu" style="display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3);">
+          <div style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: var(--radius-full); padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-2); border: 1px solid rgba(255,255,255,0.3);">
+            <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+              ${(currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()}
+            </div>
+            <span style="color: white; font-size: var(--font-size-sm); font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${currentUser.displayName || currentUser.email.split('@')[0]}
+            </span>
+            <button onclick="cerrarSesion()" style="background: rgba(255,255,255,0.2); border: none; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: white; cursor: pointer; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Cerrar sesión">
+              Salir
+            </button>
+          </div>
+        </div>
+        ` : ''}
       </div>
     </header>
     
@@ -2779,9 +3205,45 @@
         // ============================================================================
 
         document.addEventListener('DOMContentLoaded', async () => {
-            cargarTareas();
+            // ============================================================================
+            // FIREBASE AUTH STATE OBSERVER
+            // ============================================================================
 
-            // Sincronizar con Hora Legal de Colombia antes de iniciar
+            if (auth) {
+                // Configurar observer de autenticación
+                auth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        // Usuario autenticado
+                        currentUser = user;
+                        console.log('👤 Usuario autenticado:', user.displayName || user.email);
+
+                        // Cargar tareas desde Firestore
+                        appState.tareas = await cargarTareasFirestore();
+
+                        // Migrar tareas locales si las hay
+                        await migrarTareasLocales();
+
+                        // Continuar con inicialización normal de la app
+                        await inicializarAppAutenticada();
+                    } else {
+                        // Usuario no autenticado
+                        currentUser = null;
+                        renderizarLogin();
+                    }
+                });
+            } else {
+                // Firebase no configurado - usar modo local
+                console.log('⚠️ Firebase no configurado. Usando almacenamiento local.');
+                cargarTareas();
+                await inicializarAppAutenticada();
+            }
+        });
+
+        /**
+         * Inicializa la app después de verificar autenticación
+         */
+        async function inicializarAppAutenticada() {
+            // Sincronizar con Hora Legal de Colombia
             console.log('⏰ Sincronizando con Hora Legal de Colombia...');
             await sincronizarHoraOficial();
 
@@ -2814,8 +3276,8 @@
 
             // Iniciar sistema de alarmas
             cargarTareasAlertadas();
-            verificarAlarmas(); // Verificar inmediatamente
-            setInterval(verificarAlarmas, 30000); // Verificar cada 30 segundos
+            verificarAlarmas();
+            setInterval(verificarAlarmas, 30000);
 
             console.log('%c🎙️ Asistente de Voz Colombiano', 'font-size: 20px; color: #6366f1; font-weight: bold;');
             console.log('Zona horaria: America/Bogota (UTC-5)');
@@ -2823,7 +3285,8 @@
             console.log('Estado de sincronización:', isSynced ? '✅ Sincronizado' : '⚠️ Usando hora estimada');
             console.log('Suscripción:', verificarSuscripcion() ? `✅ Activa (${obtenerDiasRestantes()} días restantes)` : '❌ Inactiva');
             console.log('Sistema de alarmas: Activo ✓');
-        });
+            console.log('Usuario:', currentUser ? `✅ ${currentUser.displayName || currentUser.email}` : '❌ No autenticado (modo local)');
+        }
     </script>
 </body>
 
