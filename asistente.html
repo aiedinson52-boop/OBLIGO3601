@@ -973,6 +973,7 @@
                 await auth.signOut();
                 currentUser = null;
                 appState.tareas = [];
+                suscripcionCache = null; // Limpiar cache de suscripción
                 console.log('✅ Sesión cerrada');
                 renderizarLogin();
             } catch (error) {
@@ -1358,12 +1359,60 @@
         }
 
         // ============================================================================
-        // SISTEMA DE SUSCRIPCIÓN MENSUAL
+        // SISTEMA DE SUSCRIPCIÓN MENSUAL - VINCULADO A CUENTA DE USUARIO
         // Vigencia: 30 días calendario desde la confirmación del pago
+        // Los datos se guardan en Firestore para que sigan al usuario
         // ============================================================================
 
-        const SUBSCRIPTION_KEY = 'obligo360_subscription';
         const SUBSCRIPTION_DAYS = 30;
+
+        // Cache local de la suscripción del usuario actual
+        let suscripcionCache = null;
+
+        /**
+         * Carga la suscripción del usuario desde Firestore
+         * @returns {Promise<Object|null>} Datos de suscripción o null
+         */
+        async function cargarSuscripcionFirestore() {
+            if (!db || !currentUser) return null;
+
+            try {
+                const doc = await db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .get();
+
+                if (doc.exists) {
+                    const data = doc.data();
+                    suscripcionCache = data.suscripcion || null;
+                    return suscripcionCache;
+                }
+                return null;
+            } catch (error) {
+                console.error('Error cargando suscripción:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Guarda la suscripción del usuario en Firestore
+         * @param {Object} suscripcion - Datos de suscripción
+         */
+        async function guardarSuscripcionFirestore(suscripcion) {
+            if (!db || !currentUser) return false;
+
+            try {
+                await db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .set({ suscripcion }, { merge: true });
+
+                suscripcionCache = suscripcion;
+                console.log('✅ Suscripción guardada en la nube');
+                return true;
+            } catch (error) {
+                console.error('Error guardando suscripción:', error);
+                return false;
+            }
+        }
 
         /**
          * Verifica si hay una suscripción activa
@@ -1371,15 +1420,13 @@
          */
         function verificarSuscripcion() {
             try {
-                const data = localStorage.getItem(SUBSCRIPTION_KEY);
-                if (!data) return false;
-
-                const subscription = JSON.parse(data);
-                if (!subscription.activa || !subscription.fechaExpiracion) return false;
+                // Usar cache de suscripción del usuario actual
+                if (!suscripcionCache) return false;
+                if (!suscripcionCache.activa || !suscripcionCache.fechaExpiracion) return false;
 
                 // Usar hora sincronizada de Colombia
                 const ahora = obtenerHoraColombiana();
-                const expiracion = new Date(subscription.fechaExpiracion);
+                const expiracion = new Date(suscripcionCache.fechaExpiracion);
 
                 return ahora < expiracion;
             } catch (e) {
@@ -1391,22 +1438,28 @@
         /**
          * Activa la suscripción por 30 días
          */
-        function activarSuscripcion() {
+        async function activarSuscripcion() {
             const ahora = obtenerHoraColombiana();
             const expiracion = new Date(ahora);
             expiracion.setDate(expiracion.getDate() + SUBSCRIPTION_DAYS);
 
-            const subscription = {
+            const suscripcion = {
                 activa: true,
                 fechaActivacion: ahora.toISOString(),
-                fechaExpiracion: expiracion.toISOString()
+                fechaExpiracion: expiracion.toISOString(),
+                email: currentUser ? currentUser.email : 'anónimo'
             };
 
-            localStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(subscription));
-            console.log('✅ Suscripción activada hasta:', expiracion.toLocaleString('es-CO'));
+            // Guardar en Firestore
+            const guardada = await guardarSuscripcionFirestore(suscripcion);
 
-            actualizarEstadoBotonVoz();
-            mostrarToast(`¡Suscripción activada! Válida hasta el ${formatearFechaExpiracion(expiracion)}`, 'success');
+            if (guardada) {
+                console.log('✅ Suscripción activada hasta:', expiracion.toLocaleString('es-CO'));
+                actualizarEstadoBotonVoz();
+                mostrarToast(`¡Suscripción activada! Válida hasta el ${formatearFechaExpiracion(expiracion)}`, 'success');
+            } else {
+                mostrarToast('Error guardando suscripción. Intente nuevamente.', 'error');
+            }
         }
 
         /**
@@ -1415,14 +1468,10 @@
          */
         function obtenerDiasRestantes() {
             try {
-                const data = localStorage.getItem(SUBSCRIPTION_KEY);
-                if (!data) return 0;
-
-                const subscription = JSON.parse(data);
-                if (!subscription.fechaExpiracion) return 0;
+                if (!suscripcionCache || !suscripcionCache.fechaExpiracion) return 0;
 
                 const ahora = obtenerHoraColombiana();
-                const expiracion = new Date(subscription.fechaExpiracion);
+                const expiracion = new Date(suscripcionCache.fechaExpiracion);
                 const diferencia = expiracion - ahora;
 
                 if (diferencia <= 0) return 0;
@@ -1556,21 +1605,20 @@
             actualizarEstadoBotonVoz();
 
             // Verificar cada minuto
-            setInterval(() => {
+            setInterval(async () => {
+                // Recargar suscripción desde Firestore periódicamente
+                if (currentUser) {
+                    await cargarSuscripcionFirestore();
+                }
+
                 const eraActiva = verificarSuscripcion();
                 actualizarEstadoBotonVoz();
 
                 // Si acaba de expirar, notificar
-                if (!eraActiva) {
-                    const data = localStorage.getItem(SUBSCRIPTION_KEY);
-                    if (data) {
-                        const subscription = JSON.parse(data);
-                        if (subscription.activa) {
-                            subscription.activa = false;
-                            localStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(subscription));
-                            mostrarToast('Tu suscripción ha expirado. Renueva para continuar usando el control de voz.', 'warning');
-                        }
-                    }
+                if (!eraActiva && suscripcionCache && suscripcionCache.activa) {
+                    suscripcionCache.activa = false;
+                    await guardarSuscripcionFirestore(suscripcionCache);
+                    mostrarToast('Tu suscripción ha expirado. Renueva para continuar usando el control de voz.', 'warning');
                 }
             }, 60000); // Cada minuto
         }
@@ -3247,6 +3295,12 @@
             // Sincronizar con Hora Legal de Colombia
             console.log('⏰ Sincronizando con Hora Legal de Colombia...');
             await sincronizarHoraOficial();
+
+            // Cargar suscripción del usuario desde Firestore
+            if (currentUser) {
+                console.log('📋 Cargando suscripción del usuario...');
+                await cargarSuscripcionFirestore();
+            }
 
             // Detectar si regresa de un pago exitoso
             detectarRetornoPago();
