@@ -2798,85 +2798,63 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.lang = 'es-CO';
-            recognition.continuous = true;  // Captura continua
+            recognition.continuous = false; // Cambiado a false para mayor compatibilidad y precisión
             recognition.interimResults = true;
             recognition.maxAlternatives = 1;
 
             recognition.onstart = () => {
                 appState.isListening = true;
                 fullTranscript = '';
-                document.getElementById('voice-button').classList.add('listening');
-                const transcriptHeader = document.getElementById('transcript-header');
-                const transcriptEl = document.getElementById('transcript');
-                const voiceLabel = document.getElementById('voice-label');
-                if (transcriptHeader) transcriptHeader.style.display = 'block';
-                if (voiceLabel) voiceLabel.style.display = 'none';
-                if (transcriptEl) {
-                    transcriptEl.textContent = '🎤 Escuchando...';
-                }
+                const btn = document.getElementById('voice-button');
+                const header = document.getElementById('transcript-header');
+                const el = document.getElementById('transcript');
+
+                if (btn) btn.classList.add('listening');
+                if (header) header.style.display = 'block';
+                if (el) el.innerHTML = '<span style="color: #666;">📢 Escuchando...</span>';
+                console.log('🎤 Reconocimiento iniciado');
             };
 
             recognition.onend = () => {
-                clearTimeout(silenceTimer);
+                appState.isListening = false;
+                const btn = document.getElementById('voice-button');
+                const header = document.getElementById('transcript-header');
 
-                const transcriptHeader = document.getElementById('transcript-header');
-                const transcriptEl = document.getElementById('transcript');
-                const voiceLabel = document.getElementById('voice-label');
+                if (btn) btn.classList.remove('listening');
+                if (header) header.style.display = 'none';
 
-                // Si hay transcripción y el usuario no detuvo manualmente, procesar
-                if (fullTranscript.trim() && appState.isListening) {
-                    appState.isListening = false;
-                    document.getElementById('voice-button').classList.remove('listening');
-                    if (transcriptEl) {
-                        transcriptEl.textContent = '✅ ' + fullTranscript;
-                    }
-                    // Ocultar después de 3 segundos
-                    setTimeout(() => {
-                        if (transcriptHeader) transcriptHeader.style.display = 'none';
-                        if (voiceLabel) voiceLabel.style.display = 'inline';
-                    }, 3000);
+                console.log('🎤 Reconocimiento finalizado. Texto:', fullTranscript);
+
+                if (fullTranscript.trim()) {
                     procesarTranscripcion(fullTranscript.trim());
                 } else {
-                    appState.isListening = false;
-                    document.getElementById('voice-button').classList.remove('listening');
-                    if (transcriptHeader) transcriptHeader.style.display = 'none';
-                    if (voiceLabel) voiceLabel.style.display = 'inline';
+                    const el = document.getElementById('transcript');
+                    if (el) el.innerHTML = '<span style="color: #999;">No se escuchó nada. Intente de nuevo.</span>';
                 }
             };
 
-            recognition.onresult = (e) => {
-                clearTimeout(silenceTimer);
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscriptChunk = '';
 
-                let interim = '';
-                let finalResult = '';
-
-                for (let i = e.resultIndex; i < e.results.length; i++) {
-                    const transcript = e.results[i][0].transcript;
-                    if (e.results[i].isFinal) {
-                        finalResult += transcript + ' ';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscriptChunk += event.results[i][0].transcript;
                     } else {
-                        interim = transcript;
+                        interimTranscript += event.results[i][0].transcript;
                     }
                 }
 
-                if (finalResult) {
-                    fullTranscript += finalResult;
+                if (finalTranscriptChunk) {
+                    fullTranscript += finalTranscriptChunk;
                 }
 
-                // Mostrar transcripción en tiempo real en el header
-                const displayText = (fullTranscript + interim).trim() || '🎤 Escuchando...';
                 const transcriptEl = document.getElementById('transcript');
                 if (transcriptEl) {
-                    transcriptEl.textContent = displayText;
-                }
-
-                // Iniciar temporizador de silencio después de recibir audio
-                if (fullTranscript.trim()) {
-                    silenceTimer = setTimeout(() => {
-                        if (appState.isListening && fullTranscript.trim()) {
-                            recognition.stop();
-                        }
-                    }, SILENCE_TIMEOUT);
+                    transcriptEl.innerHTML = `
+                        <span style="color: #000; font-weight: 500;">${fullTranscript}</span>
+                        <span style="color: #666; font-style: italic;">${interimTranscript}</span>
+                    `;
                 }
             };
 
