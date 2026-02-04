@@ -19,39 +19,37 @@ let onTaskUpdateCallback = null;
  * @param {Object} opciones - Opciones de configuración
  */
 export async function inicializarListaTareas(container, opciones = {}) {
-    containerElement = container;
-    onTaskUpdateCallback = opciones.onUpdate || null;
+  containerElement = container;
+  onTaskUpdateCallback = opciones.onUpdate || null;
 
-    await cargarTareas();
-    renderizarLista();
+  await cargarTareas();
+  renderizarLista();
 }
 
 /**
  * Carga las tareas desde el almacenamiento
  */
 async function cargarTareas() {
-    try {
-        tareas = await obtenerTodasLasTareas();
-    } catch (error) {
-        console.error('Error cargando tareas:', error);
-        tareas = [];
-    }
+  try {
+    tareas = await obtenerTodasLasTareas();
+  } catch (error) {
+    console.error('Error cargando tareas:', error);
+    tareas = [];
+  }
 }
 
 /**
  * Renderiza la lista de tareas
  */
 function renderizarLista() {
-    const tareasFiltradas = filtrarTareas();
+  const tareasFiltradas = filtrarTareas();
 
-    containerElement.innerHTML = `
+  containerElement.innerHTML = `
     <div class="card">
       <div class="card-header">
         <h3 class="card-title">📋 Mis Tareas</h3>
         <select class="form-input form-select" id="filtro-tareas" style="width: auto; min-width: 120px;">
           <option value="todos" ${filtroActual === 'todos' ? 'selected' : ''}>Todas</option>
-          <option value="pendientes" ${filtroActual === 'pendientes' ? 'selected' : ''}>Pendientes</option>
-          <option value="cumplidas" ${filtroActual === 'cumplidas' ? 'selected' : ''}>Cumplidas</option>
           <option value="hoy" ${filtroActual === 'hoy' ? 'selected' : ''}>Hoy</option>
           <option value="semana" ${filtroActual === 'semana' ? 'selected' : ''}>Esta semana</option>
         </select>
@@ -64,16 +62,16 @@ function renderizarLista() {
     </div>
   `;
 
-    // Event listeners
-    containerElement.querySelector('#filtro-tareas').addEventListener('change', (e) => {
-        filtroActual = e.target.value;
-        renderizarLista();
-    });
+  // Event listeners
+  containerElement.querySelector('#filtro-tareas').addEventListener('change', (e) => {
+    filtroActual = e.target.value;
+    renderizarLista();
+  });
 
-    // Event listeners para acciones de tareas
-    containerElement.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', manejarAccionTarea);
-    });
+  // Event listeners para acciones de tareas
+  containerElement.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', manejarAccionTarea);
+  });
 }
 
 /**
@@ -81,28 +79,29 @@ function renderizarLista() {
  * @returns {Array} Tareas filtradas
  */
 function filtrarTareas() {
-    const hoy = new Date();
-    const hoyStr = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}-${hoy.getDate().toString().padStart(2, '0')}`;
+  const hoy = new Date();
+  const hoyStr = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}-${hoy.getDate().toString().padStart(2, '0')}`;
 
-    switch (filtroActual) {
-        case 'pendientes':
-            return tareas.filter(t => t.estado === ESTADOS.PENDIENTE);
+  // Siempre excluir tareas cumplidas de esta lista principal
+  const tareasPendientes = tareas.filter(t => t.estado === ESTADOS.PENDIENTE);
 
-        case 'cumplidas':
-            return tareas.filter(t => t.estado === ESTADOS.CUMPLIDA);
+  switch (filtroActual) {
+    case 'pendientes':
+    case 'todos': // 'todos' ahora es alias de pendientes en esta vista
+      return tareasPendientes;
 
-        case 'hoy':
-            return tareas.filter(t => t.fecha === hoyStr);
+    case 'hoy':
+      return tareasPendientes.filter(t => t.fecha === hoyStr);
 
-        case 'semana':
-            const finSemana = new Date(hoy);
-            finSemana.setDate(finSemana.getDate() + 7);
-            const finSemanaStr = `${finSemana.getFullYear()}-${(finSemana.getMonth() + 1).toString().padStart(2, '0')}-${finSemana.getDate().toString().padStart(2, '0')}`;
-            return tareas.filter(t => t.fecha >= hoyStr && t.fecha <= finSemanaStr);
+    case 'semana':
+      const finSemana = new Date(hoy);
+      finSemana.setDate(finSemana.getDate() + 7);
+      const finSemanaStr = `${finSemana.getFullYear()}-${(finSemana.getMonth() + 1).toString().padStart(2, '0')}-${finSemana.getDate().toString().padStart(2, '0')}`;
+      return tareasPendientes.filter(t => t.fecha >= hoyStr && t.fecha <= finSemanaStr);
 
-        default:
-            return tareas;
-    }
+    default:
+      return tareasPendientes;
+  }
 }
 
 /**
@@ -111,11 +110,11 @@ function filtrarTareas() {
  * @returns {string} HTML de la tarjeta
  */
 function renderizarTareaCard(tarea) {
-    const fecha = new Date(tarea.fecha + 'T12:00:00');
-    const esCumplida = tarea.estado === ESTADOS.CUMPLIDA;
-    const tiempoRestante = esCumplida ? null : calcularTiempoRestante(tarea);
+  const fecha = new Date(tarea.fecha + 'T12:00:00');
+  const esCumplida = tarea.estado === ESTADOS.CUMPLIDA;
+  const tiempoRestante = esCumplida ? null : calcularTiempoRestante(tarea);
 
-    return `
+  return `
     <div class="task-card priority-${tarea.prioridad} ${esCumplida ? 'completed' : ''}" data-id="${tarea.id}">
       <div class="task-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
         <h4 class="task-title">${escapeHtml(tarea.titulo)}</h4>
@@ -166,15 +165,14 @@ function renderizarTareaCard(tarea) {
  * @returns {string} HTML del estado vacío
  */
 function renderizarEstadoVacio() {
-    const mensajes = {
-        'todos': 'No hay tareas registradas. ¡Usa el micrófono para crear una!',
-        'pendientes': 'No hay tareas pendientes. ¡Excelente trabajo!',
-        'cumplidas': 'No hay tareas cumplidas aún.',
-        'hoy': 'No tienes tareas para hoy.',
-        'semana': 'No tienes tareas para esta semana.'
-    };
+  const mensajes = {
+    'todos': 'No hay tareas pendientes. ¡Excelente trabajo!',
+    'pendientes': 'No hay tareas pendientes. ¡Excelente trabajo!',
+    'hoy': 'No tienes tareas pendientes para hoy.',
+    'semana': 'No tienes tareas pendientes para esta semana.'
+  };
 
-    return `
+  return `
     <div class="empty-state">
       <div class="empty-state-icon">📝</div>
       <h3 class="empty-state-title">Sin tareas</h3>
@@ -188,45 +186,45 @@ function renderizarEstadoVacio() {
  * @param {Event} e - Evento de click
  */
 async function manejarAccionTarea(e) {
-    const action = e.target.dataset.action;
-    const id = e.target.dataset.id;
+  const action = e.target.dataset.action;
+  const id = e.target.dataset.id;
 
-    if (!action || !id) return;
+  if (!action || !id) return;
 
-    try {
-        switch (action) {
-            case 'cumplida':
-                await marcarComoCumplida(id);
-                mostrarNotificacion('Tarea marcada como cumplida', 'success');
-                break;
+  try {
+    switch (action) {
+      case 'cumplida':
+        await marcarComoCumplida(id);
+        mostrarNotificacion('Tarea marcada como cumplida', 'success');
+        break;
 
-            case 'pendiente':
-                await marcarComoPendiente(id);
-                mostrarNotificacion('Tarea marcada como pendiente', 'info');
-                break;
+      case 'pendiente':
+        await marcarComoPendiente(id);
+        mostrarNotificacion('Tarea marcada como pendiente', 'info');
+        break;
 
-            case 'eliminar':
-                if (confirm('¿Está seguro de que desea eliminar esta tarea?')) {
-                    await eliminarTarea(id);
-                    mostrarNotificacion('Tarea eliminada', 'warning');
-                } else {
-                    return;
-                }
-                break;
+      case 'eliminar':
+        if (confirm('¿Está seguro de que desea eliminar esta tarea?')) {
+          await eliminarTarea(id);
+          mostrarNotificacion('Tarea eliminada', 'warning');
+        } else {
+          return;
         }
-
-        // Recargar lista
-        await cargarTareas();
-        renderizarLista();
-
-        // Callback de actualización
-        if (onTaskUpdateCallback) {
-            onTaskUpdateCallback();
-        }
-    } catch (error) {
-        console.error('Error en acción de tarea:', error);
-        mostrarNotificacion('Error al procesar la acción', 'error');
+        break;
     }
+
+    // Recargar lista
+    await cargarTareas();
+    renderizarLista();
+
+    // Callback de actualización
+    if (onTaskUpdateCallback) {
+      onTaskUpdateCallback();
+    }
+  } catch (error) {
+    console.error('Error en acción de tarea:', error);
+    mostrarNotificacion('Error al procesar la acción', 'error');
+  }
 }
 
 /**
@@ -235,24 +233,24 @@ async function manejarAccionTarea(e) {
  * @param {string} tipo - Tipo de notificación
  */
 function mostrarNotificacion(mensaje, tipo = 'info') {
-    // Buscar o crear contenedor de toasts
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container';
-        document.body.appendChild(toastContainer);
-    }
+  // Buscar o crear contenedor de toasts
+  let toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container';
+    document.body.appendChild(toastContainer);
+  }
 
-    const iconos = {
-        'success': '✅',
-        'error': '❌',
-        'warning': '⚠️',
-        'info': 'ℹ️'
-    };
+  const iconos = {
+    'success': '✅',
+    'error': '❌',
+    'warning': '⚠️',
+    'info': 'ℹ️'
+  };
 
-    const toast = document.createElement('div');
-    toast.className = `toast ${tipo}`;
-    toast.innerHTML = `
+  const toast = document.createElement('div');
+  toast.className = `toast ${tipo}`;
+  toast.innerHTML = `
     <span class="toast-icon">${iconos[tipo]}</span>
     <div class="toast-content">
       <p class="toast-message">${mensaje}</p>
@@ -260,25 +258,25 @@ function mostrarNotificacion(mensaje, tipo = 'info') {
     <button class="toast-close" aria-label="Cerrar">×</button>
   `;
 
-    toastContainer.appendChild(toast);
+  toastContainer.appendChild(toast);
 
-    // Cerrar al hacer clic
-    toast.querySelector('.toast-close').addEventListener('click', () => {
-        toast.remove();
-    });
+  // Cerrar al hacer clic
+  toast.querySelector('.toast-close').addEventListener('click', () => {
+    toast.remove();
+  });
 
-    // Auto-cerrar después de 3 segundos
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+  // Auto-cerrar después de 3 segundos
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
 }
 
 /**
  * Recarga la lista de tareas
  */
 export async function recargarListaTareas() {
-    await cargarTareas();
-    renderizarLista();
+  await cargarTareas();
+  renderizarLista();
 }
 
 /**
@@ -287,8 +285,8 @@ export async function recargarListaTareas() {
  * @returns {string} Ícono
  */
 function getPrioridadIcon(prioridad) {
-    const iconos = { 'alta': '🔴', 'media': '🟡', 'baja': '🟢' };
-    return iconos[prioridad] || '⚪';
+  const iconos = { 'alta': '🔴', 'media': '🟡', 'baja': '🟢' };
+  return iconos[prioridad] || '⚪';
 }
 
 /**
@@ -297,8 +295,8 @@ function getPrioridadIcon(prioridad) {
  * @returns {string} Ícono
  */
 function getContextoIcon(contexto) {
-    const iconos = { 'trabajo': '💼', 'personal': '👤', 'familiar': '👨‍👩‍👧‍👦' };
-    return iconos[contexto] || '📋';
+  const iconos = { 'trabajo': '💼', 'personal': '👤', 'familiar': '👨‍👩‍👧‍👦' };
+  return iconos[contexto] || '📋';
 }
 
 /**
@@ -307,9 +305,9 @@ function getContextoIcon(contexto) {
  * @returns {string} String escapado
  */
 function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 /**
@@ -317,5 +315,5 @@ function escapeHtml(str) {
  * @returns {Array} Array de tareas
  */
 export function obtenerTareasActuales() {
-    return tareas;
+  return tareas;
 }
