@@ -9,8 +9,8 @@ import { hablar } from './VoiceService.js';
 let intervalId = null;
 let notificationPermission = 'default';
 
-// URL del sonido de alerta (base64 para evitar dependencias externas)
-const ALERT_SOUND_DATA = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYNWqy2AAAAAAAAAAAAAAAAAAAAAP/7UGQAD/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABD/+5JkCo/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAAT/+5JkCo/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAAQAAAAA//tSZAqP8AAAaQAAAAgAAA0gAAABP/7kmQKj/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQZAuP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAE';
+// Web Audio API Context (inicializado perezosamente)
+let audioContext = null;
 
 /**
  * Inicializa el servicio de alertas
@@ -136,15 +136,45 @@ function construirMensajeAlerta(tarea, alerta) {
 }
 
 /**
- * Reproduce el sonido de alerta
+ * Reproduce el sonido de alerta (Alta Frecuencia)
+ * Genera un patrón de pitidos fuertes usando Web Audio API
  */
 function reproducirSonido() {
     try {
-        const audio = new Audio(ALERT_SOUND_DATA);
-        audio.volume = 0.7;
-        audio.play().catch(err => console.warn('No se pudo reproducir sonido:', err));
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Reanudar contexto si está suspendido (requisito de navegadores modernos)
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
+        const osc = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        // Configuración para sonido fuerte y agudo
+        osc.type = 'square'; // Onda cuadrada para un sonido más "cortante" y perceptible
+        osc.frequency.setValueAtTime(3000, audioContext.currentTime); // 3000Hz (Alta frecuencia)
+
+        // Patrón de volumen: Pitido fuerte - silencio - Pitido fuerte
+        // Pitido 1 (0ms - 200ms)
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + 0.2);
+        // Silencio (200ms - 300ms)
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.2);
+        // Pitido 2 (300ms - 500ms)
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime + 0.3);
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.6); // Detener después de la secuencia completa
+
     } catch (error) {
-        console.warn('Error reproduciendo sonido:', error);
+        console.warn('Error reproduciendo sonido Web Audio API:', error);
     }
 }
 
