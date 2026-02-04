@@ -915,6 +915,12 @@
         }
 
         // ============================================================================
+        // ESTADO GLOBAL Y CONSTANTES
+        // ============================================================================
+
+
+
+        // ============================================================================
         // SISTEMA DE AUTENTICACIÓN
         // ============================================================================
 
@@ -1005,79 +1011,128 @@
         // ============================================================================
 
         /**
-         * Carga las tareas del usuario desde Firestore
+         * Listener en tiempo real para sincronizar tareas
          */
-        async function cargarTareasFirestore() {
-            if (!db || !currentUser) return [];
+        let unsubscribeTareas = null;
 
-            try {
-                const snapshot = await db.collection('usuarios')
-                    .doc(currentUser.uid)
-                    .collection('tareas')
-                    .orderBy('fecha', 'asc')
-                    .get();
+        function iniciarListenerTareas() {
+            if (!db || !currentUser) return;
 
-                const tareas = [];
-                snapshot.forEach(doc => {
-                    tareas.push({ id: doc.id, ...doc.data() });
+            // Si ya hay un listener activo, evitar duplicados
+            if (unsubscribeTareas) {
+                return;
+            }
+
+            console.log('📡 Iniciando sincronización de tareas en tiempo real...');
+
+            unsubscribeTareas = db.collection('usuarios')
+                .doc(currentUser.uid)
+                .collection('tareas')
+                .orderBy('creadaEn', 'desc')
+                .onSnapshot((snapshot) => {
+                    const tareas = [];
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        tareas.push({ id: doc.id, ...data });
+                    });
+
+                    appState.tareas = tareas;
+                    console.log(`🔄 Sincronización: ${tareas.length} tareas actualizadas`);
+
+                    renderizarCalendario();
+                    renderizarListaTareas();
+                    if (window.checkAlarms) checkAlarms();
+                }, (error) => {
+                    console.error('❌ Error en sincronización de tareas:', error);
+                    mostrarToast('Error de sincronización', 'error');
                 });
+        }
 
-                console.log(`📋 ${tareas.length} tareas cargadas de la nube`);
-                return tareas;
-            } catch (error) {
-                console.error('Error cargando tareas:', error);
-                return [];
+        function detenerListenerTareas() {
+            if (unsubscribeTareas) {
+                unsubscribeTareas();
+                unsubscribeTareas = null;
+                console.log('🛑 Sincronización detenida');
             }
         }
 
         /**
-         * Guarda una tarea en Firestore
+         * Función de compatibilidad
          */
-        async function guardarTareaFirestore(tarea) {
-            if (!db || !currentUser) return null;
+        async function cargarTareasFirestore() {
+            iniciarListenerTareas();
+            return []; // El listener llenará las tareas asíncronamente
+        }
+
+        /**
+         * Agrega una nueva tarea a Firestore
+         */
+        async function agregarTarea(tarea) {
+            if (!currentUser) {
+                mostrarToast('Debe iniciar sesión para guardar tareas', 'warning');
+                return;
+            }
 
             try {
-                const tareaData = { ...tarea };
-                delete tareaData.id; // Firestore genera su propio ID
+                const nuevaTarea = {
+                    titulo: tarea.titulo || 'Sin título',
+                    fecha: tarea.fecha || new Date().toISOString().split('T')[0],
+                    hora: tarea.hora || '09:00',
+                    contexto: tarea.contexto || 'personal',
+                    prioridad: tarea.prioridad || 'media',
+                    estado: tarea.estado || 'Pendiente',
+                    creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
+                    email: currentUser.email
+                };
 
-                if (tarea.id && !tarea.id.startsWith('temp_')) {
-                    // Actualizar tarea existente
-                    await db.collection('usuarios')
-                        .doc(currentUser.uid)
-                        .collection('tareas')
-                        .doc(tarea.id)
-                        .set(tareaData, { merge: true });
-                    return tarea.id;
-                } else {
-                    // Crear nueva tarea
-                    const docRef = await db.collection('usuarios')
-                        .doc(currentUser.uid)
-                        .collection('tareas')
-                        .add(tareaData);
-                    return docRef.id;
-                }
+                await db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .collection('tareas')
+                    .add(nuevaTarea);
+
+                console.log('✅ Tarea guardada en Firestore');
+                // No es necesario actualizar UI manualmente, onSnapshot lo hará
             } catch (error) {
                 console.error('Error guardando tarea:', error);
-                return null;
+                mostrarToast('Error al guardar la tarea', 'error');
+            }
+        }
+
+        /**
+         * Actualiza una tarea existente en Firestore
+         */
+        async function actualizarTarea(id, cambios) {
+            if (!currentUser || !id) return;
+
+            try {
+                await db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .collection('tareas')
+                    .doc(id)
+                    .update(cambios);
+                console.log(`✅ Tarea actualizada: ${id}`);
+            } catch (error) {
+                console.error('Error actualizando tarea:', error);
+                mostrarToast('Error al actualizar la tarea', 'error');
             }
         }
 
         /**
          * Elimina una tarea de Firestore
          */
-        async function eliminarTareaFirestore(tareaId) {
-            if (!db || !currentUser) return false;
+        async function eliminarTareaById(id) {
+            if (!currentUser || !id) return;
 
             try {
                 await db.collection('usuarios')
                     .doc(currentUser.uid)
                     .collection('tareas')
-                    .doc(tareaId)
+                    .doc(id)
                     .delete();
-                return true;
+                console.log(`🗑️ Tarea eliminada: ${id}`);
             } catch (error) {
                 console.error('Error eliminando tarea:', error);
-                return false;
+                mostrarToast('Error al eliminar la tarea', 'error');
             }
         }
 
@@ -1093,7 +1148,7 @@
             console.log(`📤 Migrando ${tareasLocales.length} tareas locales a la nube...`);
 
             for (const tarea of tareasLocales) {
-                await guardarTareaFirestore(tarea);
+                await agregarTarea(tarea);
             }
 
             // Limpiar localStorage después de migrar
@@ -1730,49 +1785,274 @@
             localStorage.setItem('asistente_tareas', JSON.stringify(appState.tareas));
         }
 
-        async function agregarTarea(tarea) {
-            appState.tareas.push(tarea);
-            guardarTareas();
 
-            // Sincronizar con Firestore si está autenticado
-            if (currentUser && db) {
-                const firebaseId = await guardarTareaFirestore(tarea);
-                if (firebaseId) {
-                    // Actualizar el ID de la tarea con el de Firestore
-                    const idx = appState.tareas.findIndex(t => t.id === tarea.id);
-                    if (idx !== -1) {
-                        appState.tareas[idx].id = firebaseId;
-                        guardarTareas();
-                    }
+
+        // ============================================================================
+        // RENDERIZADO DE INTERFAZ (UI)
+        // ============================================================================
+
+        function renderizarApp() {
+            const app = document.getElementById('app');
+            if (!app) return;
+
+            // Fecha actual para el banner
+            const hoy = new Date();
+            const fechaString = `${DIAS_SEMANA_COMPLETO[hoy.getDay()]}, ${hoy.getDate()} de ${MESES[hoy.getMonth()]} de ${hoy.getFullYear()}`;
+
+            app.innerHTML = `
+                <div class="app-container" style="max-width: 1200px; margin: 0 auto; padding: 20px; font-family: 'Inter', sans-serif;">
+                    <header class="app-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+                        <div class="logo-section" style="display: flex; align-items: center; gap: 15px;">
+                            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px;">
+                            <div>
+                                <h1 style="margin: 0; font-size: 1.5rem; color: #1f2937;">Asistente Personal</h1>
+                                <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">${fechaString}</p>
+                            </div>
+                        </div>
+                        <div class="user-controls" style="display: flex; gap: 15px; align-items: center;">
+                            <div id="subscription-badge" style="display: none; padding: 5px 10px; background: #d1fae5; color: #065f46; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">PREMIUM</div>
+                            <button onclick="abrirPago()" class="btn-subscribe" style="background: #4f46e5; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                Gestionar Suscripción
+                            </button>
+                            <button onclick="cerrarSesion()" style="background: transparent; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; cursor: pointer; color: #374151;">
+                                Salir
+                            </button>
+                        </div>
+                    </header>
+
+                    <main style="display: grid; grid-template-columns: 1fr 350px; gap: 30px;">
+                        <!-- Columna Izquierda: Calendario y Tareas -->
+                        <section class="left-column">
+                            <!-- Navegación Calendario -->
+                            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h2 id="calendar-month-title" style="margin: 0; font-size: 1.25rem; color: #111827;">Enero 2026</h2>
+                                <div class="calendar-nav">
+                                    <button onclick="cambiarMes(-1)" style="border: none; background: transparent; cursor: pointer; font-size: 1.2rem;">◀</button>
+                                    <button onclick="cambiarMes(1)" style="border: none; background: transparent; cursor: pointer; font-size: 1.2rem;">▶</button>
+                                </div>
+                            </div>
+
+                            <!-- Grid Calendario -->
+                            <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 30px;">
+                                <!-- Días se inyectan aquí -->
+                            </div>
+
+                            <!-- Lista de Tareas del Día -->
+                            <div class="tasks-container">
+                                <h3 style="font-size: 1.1rem; color: #374151; margin-bottom: 15px; border-left: 4px solid #4f46e5; padding-left: 10px;">
+                                    Tareas para el <span id="selected-date-label">día seleccionado</span>
+                                </h3>
+                                <ul id="lista-tareas" style="list-style: none; padding: 0; margin: 0;">
+                                    <!-- Tareas se inyectan aquí -->
+                                </ul>
+                            </div>
+                        </section>
+
+                        <!-- Columna Derecha: Asistente de Voz -->
+                        <section class="right-column" style="background: #f9fafb; padding: 25px; border-radius: 12px; height: fit-content;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <div id="voice-button" style="width: 80px; height: 80px; background: #ef4444; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+                                    <span style="font-size: 2rem;">🎙️</span>
+                                </div>
+                                <p id="voice-status" style="margin-top: 15px; color: #4b5563; font-weight: 500;">Toque para hablar</p>
+                            </div>
+
+                            <div id="transcript-container" style="background: white; padding: 15px; border-radius: 8px; min-height: 100px; border: 1px solid #e5e7eb;">
+                                <div id="transcript-header" style="display: none; color: #4f46e5; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">ESCUCHANDO...</div>
+                                <div id="transcript" style="color: #374151; font-size: 0.95rem; line-height: 1.5;"></div>
+                            </div>
+
+                            <div class="tips" style="margin-top: 20px; font-size: 0.85rem; color: #6b7280;">
+                                <p><strong>Prueba decir:</strong></p>
+                                <ul style="padding-left: 20px; margin-top: 5px;">
+                                    <li>"Desayuno de trabajo el viernes a las 8 am"</li>
+                                    <li>"Pagar servicios mañana"</li>
+                                    <li>"Cita médica el 20 de febrero"</li>
+                                </ul>
+                            </div>
+                        </section>
+                    </main>
+
+                    <!-- Modales -->
+                    <div id="confirmation-dialog" class="confirmation-dialog"></div>
+                </div>
+            `;
+
+            // Inicializar estado seleccionado si no existe
+            if (!appState.selectedDate) {
+                appState.selectedDate = new Date().toISOString().split('T')[0];
+            }
+
+            // Inicializar componentes
+            renderizarCalendario();
+            renderizarListaTareas();
+
+            // Inicializar reconocimiento (si está disponible)
+            if (window.inicializarReconocimiento) {
+                window.inicializarReconocimiento();
+            } else if (inicializarReconocimiento) {
+                inicializarReconocimiento();
+            }
+        }
+
+        function cambiarMes(delta) {
+            appState.month += delta;
+            if (appState.month > 11) {
+                appState.month = 0;
+                appState.year++;
+            } else if (appState.month < 0) {
+                appState.month = 11;
+                appState.year--;
+            }
+            renderizarCalendario();
+        }
+
+        function seleccionarFecha(fecha) {
+            appState.selectedDate = fecha;
+            renderizarCalendario(); // Para actualizar selección visual
+            renderizarListaTareas();
+        }
+
+        function renderizarCalendario() {
+            const grid = document.getElementById('calendar-grid');
+            const titulo = document.getElementById('calendar-month-title');
+            if (!grid || !titulo) return;
+
+            const mes = appState.month;
+            const anio = appState.year;
+
+            titulo.textContent = `${MESES[mes]} ${anio}`;
+            grid.innerHTML = '';
+
+            // Cabeceras de días
+            const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            diasSemana.forEach(dia => {
+                const el = document.createElement('div');
+                el.textContent = dia;
+                el.style.textAlign = 'center';
+                el.style.fontWeight = 'bold';
+                el.style.color = '#9ca3af';
+                el.style.fontSize = '0.85rem';
+                el.style.padding = '5px 0';
+                grid.appendChild(el);
+            });
+
+            // Días del mes
+            const primerDia = new Date(anio, mes, 1).getDay();
+            const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+
+            // Espacios vacíos
+            for (let i = 0; i < primerDia; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            // Días
+            for (let dia = 1; dia <= diasEnMes; dia++) {
+                const fechaStr = `${anio}-${(mes + 1).toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
+                const el = document.createElement('div');
+                el.textContent = dia;
+
+                // Estilos base
+                el.style.textAlign = 'center';
+                el.style.padding = '10px';
+                el.style.borderRadius = '8px';
+                el.style.cursor = 'pointer';
+                el.style.fontSize = '0.9rem';
+                el.style.transition = 'background 0.2s';
+
+                // Selección
+                if (fechaStr === appState.selectedDate) {
+                    el.style.background = '#4f46e5';
+                    el.style.color = 'white';
+                    el.style.fontWeight = 'bold';
+                } else {
+                    el.style.background = '#f3f4f6';
+                    el.onmouseover = () => el.style.background = '#e5e7eb';
+                    el.onmouseout = () => el.style.background = '#f3f4f6';
                 }
-            }
-        }
 
-        async function actualizarTarea(id, cambios) {
-            const idx = appState.tareas.findIndex(t => t.id === id);
-            if (idx !== -1) {
-                appState.tareas[idx] = { ...appState.tareas[idx], ...cambios };
-                guardarTareas();
-
-                // Sincronizar con Firestore si está autenticado
-                if (currentUser && db) {
-                    await guardarTareaFirestore(appState.tareas[idx]);
+                // Indicador de tareas
+                const tieneTareas = appState.tareas.some(t => t.fecha === fechaStr);
+                if (tieneTareas) {
+                    const dot = document.createElement('div');
+                    dot.style.width = '4px';
+                    dot.style.height = '4px';
+                    dot.style.background = fechaStr === appState.selectedDate ? 'white' : '#ef4444';
+                    dot.style.borderRadius = '50%';
+                    dot.style.margin = '2px auto 0';
+                    el.appendChild(dot);
                 }
+
+                el.onclick = () => seleccionarFecha(fechaStr);
+                grid.appendChild(el);
             }
         }
 
-        async function eliminarTareaById(id) {
-            appState.tareas = appState.tareas.filter(t => t.id !== id);
-            guardarTareas();
+        function renderizarListaTareas() {
+            const lista = document.getElementById('lista-tareas');
+            const label = document.getElementById('selected-date-label');
+            if (!lista) return;
 
-            // Sincronizar con Firestore si está autenticado
-            if (currentUser && db) {
-                await eliminarTareaFirestore(id);
+            if (label && appState.selectedDate) {
+                const parts = appState.selectedDate.split('-');
+                label.textContent = `${parts[2]}/${parts[1]}/${parts[0]}`;
             }
+
+            lista.innerHTML = '';
+
+            const tareasDia = appState.tareas.filter(t => t.fecha === appState.selectedDate);
+
+            if (tareasDia.length === 0) {
+                lista.innerHTML = `
+                    <li style="text-align: center; padding: 20px; color: #9ca3af;">
+                        No hay tareas programadas para este día.<br>
+                        <small>Usa el micrófono para agregar una.</small>
+                    </li>
+                `;
+                return;
+            }
+
+            tareasDia.forEach(tarea => {
+                const li = document.createElement('li');
+                li.style.borderBottom = '1px solid #f3f4f6';
+                li.style.padding = '12px 0';
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+
+                const tituloStyle = tarea.estado === 'Cumplida' ? 'text-decoration: line-through; color: #9ca3af;' : 'color: #1f2937;';
+
+                li.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; ${tituloStyle}">${tarea.titulo}</div>
+                        <div style="font-size: 0.8rem; color: #6b7280;">
+                            ${tarea.hora} • ${tarea.prioridad} • ${tarea.contexto}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="${tarea.estado === 'Pendiente' ? `marcarCumplida1('${tarea.id}')` : `marcarPendiente1('${tarea.id}')`}" 
+                                style="border: none; background: ${tarea.estado === 'Pendiente' ? '#d1fae5' : '#e5e7eb'}; color: ${tarea.estado === 'Pendiente' ? '#065f46' : '#6b7280'}; border-radius: 4px; padding: 4px 8px; cursor: pointer;">
+                            ${tarea.estado === 'Pendiente' ? '✓' : '↺'}
+                        </button>
+                        <button onclick="eliminarTarea('${tarea.id}')" 
+                                style="border: none; background: #fee2e2; color: #991b1b; border-radius: 4px; padding: 4px 8px; cursor: pointer;">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                lista.appendChild(li);
+            });
         }
+
+        // Helpers para los botones inline del HTML generado
+        window.marcarCumplida1 = (id) => actualizarTarea(id, { estado: 'Cumplida' });
+        window.marcarPendiente1 = (id) => actualizarTarea(id, { estado: 'Pendiente' });
+        window.eliminarTarea = (id) => eliminarTareaById(id);
+        window.cambiarMes = cambiarMes;
 
         // ============================================================================
         // SISTEMA DE ALARMAS
+
         // ============================================================================
 
         let alarmaActiva = false;
@@ -3266,8 +3546,11 @@
                         currentUser = user;
                         console.log('👤 Usuario autenticado:', user.displayName || user.email);
 
-                        // Cargar tareas desde Firestore
-                        appState.tareas = await cargarTareasFirestore();
+                        // Iniciar sincronización en tiempo real
+                        iniciarListenerTareas();
+
+                        // Cargar suscripción del usuario desde Firestore
+                        await cargarSuscripcionFirestore();
 
                         // Migrar tareas locales si las hay
                         await migrarTareasLocales();
@@ -3277,6 +3560,9 @@
                     } else {
                         // Usuario no autenticado
                         currentUser = null;
+                        detenerListenerTareas();
+                        appState.tareas = [];
+                        suscripcionCache = null;
                         renderizarLogin();
                     }
                 });
