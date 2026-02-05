@@ -28,12 +28,12 @@ function renderizarListaCumplidas() {
 
     if (tareasCumplidas.length === 0) {
         containerElement.innerHTML = `
-            <div class="card" style="margin-top: var(--space-4);">
+            <div class="card" style="margin-top: var(--space-8); border-top: 4px solid var(--color-success);">
                 <div class="card-header">
                     <h3 class="card-title">✅ Mis Tareas Cumplidas</h3>
                 </div>
                 <div style="padding: var(--space-4); text-align: center; color: var(--color-gray-500); font-size: var(--font-size-sm);">
-                    No hay tareas cumplidas aún.
+                    No hay tareas cumplidas aún. Complétalas del listado superior.
                 </div>
             </div>
         `;
