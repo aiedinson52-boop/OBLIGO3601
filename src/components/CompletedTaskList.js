@@ -30,7 +30,7 @@ function renderizarListaCumplidas() {
         containerElement.innerHTML = `
             <div class="card" style="margin-top: var(--space-4);">
                 <div class="card-header">
-                    <h3 class="card-title">✅ Mis tareas cumplidas</h3>
+                    <h3 class="card-title">✅ Mis Tareas Cumplidas</h3>
                 </div>
                 <div style="padding: var(--space-4); text-align: center; color: var(--color-gray-500); font-size: var(--font-size-sm);">
                     No hay tareas cumplidas aún.
@@ -43,7 +43,7 @@ function renderizarListaCumplidas() {
     containerElement.innerHTML = `
         <div class="card" style="margin-top: var(--space-8); border-top: 4px solid var(--color-success);">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 class="card-title">✅ Mis tareas cumplidas</h3>
+                <h3 class="card-title">✅ Mis Tareas Cumplidas</h3>
                 <button class="btn btn-secondary" id="btn-export-excel" style="font-size: var(--font-size-xs); padding: var(--space-1) var(--space-2);">
                     📥 Descargar Excel
                 </button>
