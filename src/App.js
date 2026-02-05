@@ -155,17 +155,19 @@ function renderizarEstructura(user) {
       <aside class="sidebar">
         <div id="task-list-container"></div>
         
-        <div class="card" style="margin-top: var(--space-4);">
-          <div class="card-header">
-            <h3 class="card-title">💡 Comandos de Voz</h3>
-          </div>
-          <ul style="font-size: var(--font-size-sm); color: var(--color-gray-600); list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
-            <li>📌 "Nueva tarea pagar arriendo mañana a las 3"</li>
-            <li>📋 "¿Qué tareas tengo para hoy?"</li>
-            <li>✅ "Marcar cumplida la tarea..."</li>
-            <li>📅 "Posponer tarea dos días"</li>
-            <li>❓ "Ayuda" - Ver más comandos</li>
-          </ul>
+        <div id="voice-commands-section">
+            <div class="card" style="margin-top: var(--space-4);">
+              <div class="card-header">
+                <h3 class="card-title">💡 Comandos de Voz</h3>
+              </div>
+              <ul style="font-size: var(--font-size-sm); color: var(--color-gray-600); list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                <li>📌 "Nueva tarea pagar arriendo mañana a las 3"</li>
+                <li>📋 "¿Qué tareas tengo para hoy?"</li>
+                <li>✅ "Marcar cumplida la tarea..."</li>
+                <li>📅 "Posponer tarea dos días"</li>
+                <li>❓ "Ayuda" - Ver más comandos</li>
+              </ul>
+            </div>
         </div>
         
         <!-- Contenedor para tareas cumplidas -->
