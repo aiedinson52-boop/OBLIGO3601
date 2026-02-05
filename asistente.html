@@ -2560,7 +2560,7 @@
                 const clases = ['calendar-day'];
                 if (fechaStr === hoyStr) clases.push('today');
                 if (esFestivo(fecha, festivos)) clases.push('holiday');
-                if (appState.tareas.some(t => t.fecha === fechaStr)) clases.push('has-tasks');
+                if (appState.tareas.some(t => t.fecha === fechaStr && t.estado === 'Pendiente')) clases.push('has-tasks');
                 if (appState.selectedDate === fechaStr) clases.push('selected');
 
                 const festivo = esFestivo(fecha, festivos);

@@ -164,9 +164,12 @@ function renderizarDiasMes() {
             clases.push('holiday');
         }
 
-        // Verificar si tiene tareas
+        // Verificar si tiene tareas pendientes
         if (estadoCalendario.tareasPorDia.has(fechaStr)) {
-            clases.push('has-tasks');
+            const tareasDia = estadoCalendario.tareasPorDia.get(fechaStr);
+            if (tareasDia.some(t => t.estado === 'Pendiente')) {
+                clases.push('has-tasks');
+            }
         }
 
         // Verificar si está seleccionado
