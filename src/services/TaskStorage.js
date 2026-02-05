@@ -4,6 +4,7 @@
  */
 
 import { db, auth } from '../config/firebase.js';
+import { ESTADOS } from '../models/Task.js';
 import {
     collection,
     doc,
@@ -182,7 +183,7 @@ export async function obtenerTareasPorFecha(fecha) {
 }
 
 export async function obtenerTareasPendientes() {
-    return obtenerTodasLasTareas({ estado: 'Pendiente' });
+    return obtenerTodasLasTareas({ estado: ESTADOS.PENDIENTE });
 }
 
 export async function obtenerTareasPorMes(year, month) {
@@ -204,11 +205,11 @@ export async function actualizarTarea(id, cambios) {
 }
 
 export async function marcarComoCumplida(id) {
-    return actualizarTarea(id, { estado: 'Cumplida' });
+    return actualizarTarea(id, { estado: ESTADOS.CUMPLIDA });
 }
 
 export async function marcarComoPendiente(id) {
-    return actualizarTarea(id, { estado: 'Pendiente' });
+    return actualizarTarea(id, { estado: ESTADOS.PENDIENTE });
 }
 
 /**
@@ -246,17 +247,17 @@ export async function obtenerEstadisticas() {
 
     const stats = {
         total: tareas.length,
-        pendientes: tareas.filter(t => t.estado === 'Pendiente').length,
-        cumplidas: tareas.filter(t => t.estado === 'Cumplida').length,
+        pendientes: tareas.filter(t => t.estado === ESTADOS.PENDIENTE).length,
+        cumplidas: tareas.filter(t => t.estado === ESTADOS.CUMPLIDA).length,
         porPrioridad: {
-            alta: tareas.filter(t => t.prioridad === 'alta' && t.estado === 'Pendiente').length,
-            media: tareas.filter(t => t.prioridad === 'media' && t.estado === 'Pendiente').length,
-            baja: tareas.filter(t => t.prioridad === 'baja' && t.estado === 'Pendiente').length
+            alta: tareas.filter(t => t.prioridad === 'alta' && t.estado === ESTADOS.PENDIENTE).length,
+            media: tareas.filter(t => t.prioridad === 'media' && t.estado === ESTADOS.PENDIENTE).length,
+            baja: tareas.filter(t => t.prioridad === 'baja' && t.estado === ESTADOS.PENDIENTE).length
         },
         porContexto: {
-            trabajo: tareas.filter(t => t.contexto === 'trabajo' && t.estado === 'Pendiente').length,
-            personal: tareas.filter(t => t.contexto === 'personal' && t.estado === 'Pendiente').length,
-            familiar: tareas.filter(t => t.contexto === 'familiar' && t.estado === 'Pendiente').length
+            trabajo: tareas.filter(t => t.contexto === 'trabajo' && t.estado === ESTADOS.PENDIENTE).length,
+            personal: tareas.filter(t => t.contexto === 'personal' && t.estado === ESTADOS.PENDIENTE).length,
+            familiar: tareas.filter(t => t.contexto === 'familiar' && t.estado === ESTADOS.PENDIENTE).length
         }
     };
 

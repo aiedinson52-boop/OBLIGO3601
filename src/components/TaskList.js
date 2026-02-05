@@ -83,7 +83,7 @@ function filtrarTareas() {
   const hoyStr = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}-${hoy.getDate().toString().padStart(2, '0')}`;
 
   // Siempre excluir tareas cumplidas de esta lista principal (Hardcoded 'Pendiente' for safety)
-  const tareasPendientes = tareas.filter(t => t.estado === 'Pendiente');
+  const tareasPendientes = tareas.filter(t => t.estado === ESTADOS.PENDIENTE);
 
   switch (filtroActual) {
     case 'pendientes':

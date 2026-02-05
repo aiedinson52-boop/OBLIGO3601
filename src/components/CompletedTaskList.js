@@ -1,4 +1,5 @@
 import { obtenerTodasLasTareas, marcarComoPendiente, eliminarTarea } from '../services/TaskStorage.js';
+import { ESTADOS } from '../models/Task.js';
 import { formatearFecha } from '../data/colombianHolidays.js';
 
 let containerElement = null;
@@ -15,7 +16,7 @@ export async function inicializarCompletedTaskList(container, opciones = {}) {
 async function cargarTareasCumplidas() {
     try {
         const todas = await obtenerTodasLasTareas();
-        tareasCumplidas = todas.filter(t => t.estado === 'Cumplida');
+        tareasCumplidas = todas.filter(t => t.estado === ESTADOS.CUMPLIDA);
     } catch (error) {
         console.error('Error cargando tareas cumplidas:', error);
         tareasCumplidas = [];
@@ -40,7 +41,7 @@ function renderizarListaCumplidas() {
     }
 
     containerElement.innerHTML = `
-        <div class="card" style="margin-top: var(--space-4);">
+        <div class="card" style="margin-top: var(--space-8); border-top: 4px solid var(--color-success);">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 class="card-title">✅ Mis tareas cumplidas</h3>
                 <button class="btn btn-secondary" id="btn-export-excel" style="font-size: var(--font-size-xs); padding: var(--space-1) var(--space-2);">
