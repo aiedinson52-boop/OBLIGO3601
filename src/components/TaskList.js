@@ -3,7 +3,7 @@
  * Muestra tareas con filtros y acciones rápidas
  */
 
-import { obtenerTodasLasTareas, marcarComoCumplida, marcarComoPendiente, eliminarTarea } from '../services/TaskStorage.js';
+import { obtenerTareasPendientes, marcarComoCumplida, marcarComoPendiente, eliminarTarea } from '../services/TaskStorage.js';
 import { ETIQUETAS_PRIORIDAD, ETIQUETAS_CONTEXTO, formatearHora12, ESTADOS } from '../models/Task.js';
 import { formatearFecha } from '../data/colombianHolidays.js';
 import { calcularTiempoRestante } from '../services/AlertService.js';
@@ -31,7 +31,8 @@ export async function inicializarListaTareas(container, opciones = {}) {
  */
 async function cargarTareas() {
   try {
-    tareas = await obtenerTodasLasTareas();
+    // CAMBIO CRITICO: Solo obtener pendientes
+    tareas = await obtenerTareasPendientes();
   } catch (error) {
     console.error('Error cargando tareas:', error);
     tareas = [];
@@ -47,7 +48,7 @@ function renderizarLista() {
   containerElement.innerHTML = `
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">📋 Mis Tareas</h3>
+        <h3 class="card-title">📋 Mis Tareas Penidientes</h3>
         <select class="form-input form-select" id="filtro-tareas" style="width: auto; min-width: 120px;">
           <option value="todos" ${filtroActual === 'todos' ? 'selected' : ''}>Pendientes</option>
           <option value="hoy" ${filtroActual === 'hoy' ? 'selected' : ''}>Hoy</option>
@@ -82,7 +83,7 @@ function filtrarTareas() {
   const hoy = new Date();
   const hoyStr = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}-${hoy.getDate().toString().padStart(2, '0')}`;
 
-  // Siempre excluir tareas cumplidas de esta lista principal (Hardcoded 'Pendiente' for safety)
+  // Las tareas ya vienen filtradas por ESTADO desde el storage, pero re-confirmamos por seguridad
   const tareasPendientes = tareas.filter(t => t.estado === ESTADOS.PENDIENTE);
 
   switch (filtroActual) {
@@ -111,7 +112,7 @@ function filtrarTareas() {
  */
 function renderizarTareaCard(tarea) {
   const fecha = new Date(tarea.fecha + 'T12:00:00');
-  const esCumplida = tarea.estado === ESTADOS.CUMPLIDA;
+  const esCumplida = tarea.estado === ESTADOS.CUMPLIDA; // Should be false here generally
   const tiempoRestante = esCumplida ? null : calcularTiempoRestante(tarea);
 
   return `

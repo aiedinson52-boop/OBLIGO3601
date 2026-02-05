@@ -1,4 +1,4 @@
-import { obtenerTodasLasTareas, marcarComoPendiente, eliminarTarea } from '../services/TaskStorage.js';
+import { obtenerTareasCumplidas, marcarComoPendiente, eliminarTarea } from '../services/TaskStorage.js';
 import { ESTADOS } from '../models/Task.js';
 import { formatearFecha } from '../data/colombianHolidays.js';
 
@@ -15,8 +15,8 @@ export async function inicializarCompletedTaskList(container, opciones = {}) {
 
 async function cargarTareasCumplidas() {
     try {
-        const todas = await obtenerTodasLasTareas();
-        tareasCumplidas = todas.filter(t => t.estado === ESTADOS.CUMPLIDA);
+        // CAMBIO CRITICO: Solo obtener cumplidas
+        tareasCumplidas = await obtenerTareasCumplidas();
     } catch (error) {
         console.error('Error cargando tareas cumplidas:', error);
         tareasCumplidas = [];

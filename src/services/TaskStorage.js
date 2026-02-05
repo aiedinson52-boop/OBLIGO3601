@@ -134,7 +134,12 @@ export async function obtenerTodasLasTareas(filtros = {}) {
 
     if (auth.currentUser) {
         try {
-            const q = query(getUserTasksRef()); // Podríamos agregar orderBy aquí
+            let q = query(getUserTasksRef());
+
+            if (filtros.estado) {
+                q = query(q, where('estado', '==', filtros.estado));
+            }
+
             const querySnapshot = await getDocs(q);
             querySnapshot.forEach((doc) => {
                 tareas.push(doc.data());
@@ -184,6 +189,10 @@ export async function obtenerTareasPorFecha(fecha) {
 
 export async function obtenerTareasPendientes() {
     return obtenerTodasLasTareas({ estado: ESTADOS.PENDIENTE });
+}
+
+export async function obtenerTareasCumplidas() {
+    return obtenerTodasLasTareas({ estado: ESTADOS.CUMPLIDA });
 }
 
 export async function obtenerTareasPorMes(year, month) {
