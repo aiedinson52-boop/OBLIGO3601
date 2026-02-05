@@ -49,7 +49,7 @@ function renderizarLista() {
       <div class="card-header">
         <h3 class="card-title">📋 Mis Tareas</h3>
         <select class="form-input form-select" id="filtro-tareas" style="width: auto; min-width: 120px;">
-          <option value="todos" ${filtroActual === 'todos' ? 'selected' : ''}>Todas</option>
+          <option value="todos" ${filtroActual === 'todos' ? 'selected' : ''}>Pendientes</option>
           <option value="hoy" ${filtroActual === 'hoy' ? 'selected' : ''}>Hoy</option>
           <option value="semana" ${filtroActual === 'semana' ? 'selected' : ''}>Esta semana</option>
         </select>
@@ -82,12 +82,12 @@ function filtrarTareas() {
   const hoy = new Date();
   const hoyStr = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}-${hoy.getDate().toString().padStart(2, '0')}`;
 
-  // Siempre excluir tareas cumplidas de esta lista principal
-  const tareasPendientes = tareas.filter(t => t.estado === ESTADOS.PENDIENTE);
+  // Siempre excluir tareas cumplidas de esta lista principal (Hardcoded 'Pendiente' for safety)
+  const tareasPendientes = tareas.filter(t => t.estado === 'Pendiente');
 
   switch (filtroActual) {
     case 'pendientes':
-    case 'todos': // 'todos' ahora es alias de pendientes en esta vista
+    case 'todos': // 'todos' ahora es alias de pendientes
       return tareasPendientes;
 
     case 'hoy':
