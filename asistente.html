@@ -2647,6 +2647,13 @@
 
             const cumplidas = appState.tareas.filter(t => t.estado === 'Cumplida');
 
+            // Ordenar por fecha de actualización (más reciente primero) para "historial"
+            cumplidas.sort((a, b) => {
+                const dateA = new Date(a.actualizadaEn || a.creadaEn || a.fecha);
+                const dateB = new Date(b.actualizadaEn || b.creadaEn || b.fecha);
+                return dateB - dateA;
+            });
+
             if (cumplidas.length === 0) {
                 container.innerHTML = `
                     <div class="card" style="border-top: 4px solid var(--color-success);">

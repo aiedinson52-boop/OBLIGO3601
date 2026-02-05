@@ -26,6 +26,13 @@ async function cargarTareasCumplidas() {
 function renderizarListaCumplidas() {
     if (!containerElement) return;
 
+    // Ordenar para mostrar las recién completadas arriba
+    tareasCumplidas.sort((a, b) => {
+        const dateA = new Date(a.actualizadaEn || a.creadaEn || a.fecha);
+        const dateB = new Date(b.actualizadaEn || b.creadaEn || b.fecha);
+        return dateB - dateA;
+    });
+
     if (tareasCumplidas.length === 0) {
         containerElement.innerHTML = `
             <div class="card" style="border-top: 4px solid var(--color-success);">
