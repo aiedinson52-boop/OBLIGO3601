@@ -56,7 +56,7 @@ function renderizarListaCumplidas() {
                 </button>
             </div>
             
-            <div class="lista-tareas-cumplidas" style="max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2);">
+            <div class="lista-tareas-cumplidas" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); scrollbar-width: thin;">
                 ${tareasCumplidas.map(renderizarItemCumplido).join('')}
             </div>
         </div>

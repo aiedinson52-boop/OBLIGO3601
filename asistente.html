@@ -112,6 +112,24 @@
             --z-notification: 300;
         }
 
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-gray-300);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-gray-400);
+        }
+
         @media (prefers-color-scheme: dark) {
             :root {
                 --glass-bg: rgba(30, 41, 59, 0.8);
@@ -2678,7 +2696,7 @@
                         </button>
                     </div>
                     
-                    <div class="lista-tareas-cumplidas" style="max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2);">
+                    <div class="lista-tareas-cumplidas" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); scrollbar-width: thin;">
                         ${cumplidas.map(t => {
                 const fecha = new Date(t.fecha + 'T12:00:00');
                 const fechaFormateada = fecha.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
