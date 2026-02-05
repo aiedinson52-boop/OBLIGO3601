@@ -106,7 +106,7 @@ async function iniciarInterfazPrincipal(user) {
     configurarEventosGlobales();
 
     appState.initialized = true;
-    console.log('Aplicación principal iniciada');
+    console.log('Aplicación principal iniciada - Versión 1.2 (Separación Tareas)');
 }
 
 /**
