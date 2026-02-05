@@ -28,7 +28,7 @@ function renderizarListaCumplidas() {
 
     if (tareasCumplidas.length === 0) {
         containerElement.innerHTML = `
-            <div class="card" style="margin-top: var(--space-8); border-top: 4px solid var(--color-success);">
+            <div class="card" style="border-top: 4px solid var(--color-success);">
                 <div class="card-header">
                     <h3 class="card-title">✅ Mis Tareas Cumplidas</h3>
                 </div>
@@ -41,7 +41,7 @@ function renderizarListaCumplidas() {
     }
 
     containerElement.innerHTML = `
-        <div class="card" style="margin-top: var(--space-8); border-top: 4px solid var(--color-success);">
+        <div class="card" style="border-top: 4px solid var(--color-success);">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 class="card-title">✅ Mis Tareas Cumplidas</h3>
                 <button class="btn btn-secondary" id="btn-export-excel" style="font-size: var(--font-size-xs); padding: var(--space-1) var(--space-2);">

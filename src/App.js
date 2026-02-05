@@ -156,7 +156,7 @@ function renderizarEstructura(user) {
         <div id="task-list-container"></div>
         
         <div id="voice-commands-section">
-            <div class="card" style="margin-top: var(--space-4);">
+            <div class="card">
               <div class="card-header">
                 <h3 class="card-title">💡 Comandos de Voz</h3>
               </div>
