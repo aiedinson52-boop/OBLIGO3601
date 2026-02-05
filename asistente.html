@@ -2439,19 +2439,23 @@
         <div id="day-summary" class="hidden"></div>
       </div>
       
-      <aside>
+      <aside class="sidebar">
         <div id="task-list-container"></div>
         
-        <div class="card" style="margin-top: var(--space-4);">
-          <div class="card-header">
-            <h3 class="card-title">💡 Comandos de Voz</h3>
-          </div>
-          <ul style="font-size: var(--font-size-sm); color: #ffffff; list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
-            <li>📌 "Nueva tarea pagar arriendo mañana"</li>
-            <li>📋 "¿Qué tareas tengo para hoy?"</li>
-            <li>✅ "Marcar cumplida..."</li>
-          </ul>
+        <div id="voice-commands-section">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">💡 Comandos de Voz</h3>
+              </div>
+              <ul style="font-size: var(--font-size-sm); color: #ffffff; list-style: none; display: flex; flex-direction: column; gap: var(--space-2);">
+                <li>📌 "Nueva tarea pagar arriendo mañana"</li>
+                <li>📋 "¿Qué tareas tengo para hoy?"</li>
+                <li>✅ "Marcar cumplida..."</li>
+              </ul>
+            </div>
         </div>
+
+        <div id="completed-tasks-container"></div>
       </aside>
     </main>
     
@@ -2465,6 +2469,7 @@
             renderizarCalendario();
             renderizarVoice();
             renderizarListaTareas();
+            renderizarListaCumplidas();
         }
 
         /**
@@ -2636,12 +2641,86 @@
             inicializarReconocimiento();
         }
 
+        function renderizarListaCumplidas() {
+            const container = document.getElementById('completed-tasks-container');
+            if (!container) return;
+
+            const cumplidas = appState.tareas.filter(t => t.estado === 'Cumplida');
+
+            if (cumplidas.length === 0) {
+                container.innerHTML = `
+                    <div class="card" style="border-top: 4px solid var(--color-success);">
+                        <div class="card-header">
+                            <h3 class="card-title">Mis Tareas Cumplidas</h3>
+                        </div>
+                        <div style="padding: var(--space-4); text-align: center; color: var(--color-gray-500); font-size: var(--font-size-sm);">
+                            No hay tareas cumplidas aún. Complétalas del listado superior.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="card" style="border-top: 4px solid var(--color-success);">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 class="card-title">Mis Tareas Cumplidas</h3>
+                        <button class="btn btn-secondary" onclick="exportarExcel()" style="font-size: var(--font-size-xs); padding: var(--space-1) var(--space-2);">
+                            📥 Descargar Excel
+                        </button>
+                    </div>
+                    
+                    <div class="lista-tareas-cumplidas" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2);">
+                        ${cumplidas.map(t => {
+                const fecha = new Date(t.fecha + 'T12:00:00');
+                const fechaFormateada = fecha.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
+                return `
+                                <div class="task-item-compact" style="background: var(--color-bg-secondary); padding: var(--space-2); border-radius: var(--radius-sm); border-left: 3px solid var(--color-success);">
+                                    <div style="display: flex; justify-content: space-between; gap: var(--space-2);">
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 500; text-decoration: line-through; color: var(--color-gray-500);">${t.titulo}</div>
+                                            <div style="font-size: var(--font-size-xs); color: var(--color-gray-400);">
+                                                ${fechaFormateada}
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-ghost" onclick="marcarPendiente('${t.id}')" title="Restaurar a pendientes">↩️</button>
+                                    </div>
+                                </div>
+                            `;
+            }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function exportarExcel() {
+            if (!window.XLSX) {
+                alert('La librería de Excel no está cargada.');
+                return;
+            }
+            const cumplidas = appState.tareas.filter(t => t.estado === 'Cumplida');
+            const data = cumplidas.map(t => ({
+                Titulo: t.titulo,
+                Fecha: t.fecha,
+                Hora: t.hora,
+                Prioridad: t.prioridad,
+                Contexto: t.contexto,
+                Estado: t.estado,
+                Descripcion: t.descripcion || ''
+            }));
+            const ws = window.XLSX.utils.json_to_sheet(data);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Tareas Cumplidas");
+            window.XLSX.writeFile(wb, `mis_tareas_cumplidas_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
         function renderizarListaTareas() {
             const container = document.getElementById('task-list-container');
+            // FILTRO ESTRICTO: Solo pendientes
             const pendientes = appState.tareas.filter(t => t.estado === 'Pendiente');
 
             // Ordenar tareas cronológicamente (más próximas primero)
-            const tareasOrdenadas = [...appState.tareas].sort((a, b) => {
+            const tareasOrdenadas = [...pendientes].sort((a, b) => {
                 const fechaA = new Date(`${a.fecha}T${a.hora}:00`);
                 const fechaB = new Date(`${b.fecha}T${b.hora}:00`);
                 return fechaA - fechaB; // Más próximas primero
@@ -2650,7 +2729,7 @@
             container.innerHTML = `
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">📋 Mis Tareas</h3>
+        <h3 class="card-title">📋 Mis Tareas Pendientes</h3>
         <span style="font-size: var(--font-size-sm); color: var(--color-gray-500);">${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}</span>
       </div>
       <div id="lista-tareas" style="max-height: 450px; overflow-y: auto; padding-right: var(--space-2);">
@@ -2661,21 +2740,17 @@
             <p style="font-size: var(--font-size-sm); color: var(--color-gray-500);">¡Use el micrófono para crear una!</p>
           </div>
         ` : tareasOrdenadas.map(t => `
-          <div class="task-card priority-${t.prioridad} ${t.estado === 'Cumplida' ? 'completed' : ''}" data-id="${t.id}">
+          <div class="task-card priority-${t.prioridad}" data-id="${t.id}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <h4 class="task-title">${t.titulo}</h4>
-              <span class="status-indicator ${t.estado.toLowerCase()}">${t.estado}</span>
+              <span class="status-indicator pendiente">${t.estado}</span>
             </div>
             <div class="task-meta" style="margin-top: var(--space-2);">
               <span class="task-badge">📅 ${formatearFechaCorta(new Date(t.fecha))}</span>
               <span class="task-badge">🕐 ${formatearHora12(t.hora)}</span>
             </div>
             <div style="margin-top: var(--space-3); display: flex; gap: var(--space-2); flex-wrap: wrap;">
-              ${t.estado === 'Pendiente' ? `
-                <button class="btn btn-success" style="font-size: var(--font-size-xs); padding: var(--space-2);" onclick="marcarCumplida('${t.id}')">✓ Cumplida</button>
-              ` : `
-                <button class="btn btn-secondary" style="font-size: var(--font-size-xs); padding: var(--space-2);" onclick="marcarPendiente('${t.id}')">↩️ Pendiente</button>
-              `}
+              <button class="btn btn-success" style="font-size: var(--font-size-xs); padding: var(--space-2);" onclick="marcarCumplida('${t.id}')">✓ Cumplida</button>
               <button class="btn btn-primary" style="font-size: var(--font-size-xs); padding: var(--space-2);" onclick="abrirModalEdicion('${t.id}')">✏️ Modificar</button>
               <button class="btn btn-danger" style="font-size: var(--font-size-xs); padding: var(--space-2);" onclick="eliminarTarea('${t.id}')">🗑️</button>
             </div>
@@ -3262,6 +3337,7 @@
         window.marcarCumplida = function (id) {
             actualizarTarea(id, { estado: 'Cumplida' });
             renderizarListaTareas();
+            renderizarListaCumplidas();
             renderizarCalendario();
             mostrarToast('Tarea marcada como cumplida', 'success');
         };
@@ -3269,6 +3345,7 @@
         window.marcarPendiente = function (id) {
             actualizarTarea(id, { estado: 'Pendiente' });
             renderizarListaTareas();
+            renderizarListaCumplidas();
             renderizarCalendario();
             mostrarToast('Tarea marcada como pendiente', 'info');
         };
@@ -3277,6 +3354,7 @@
             if (confirm('¿Está seguro de eliminar esta tarea?')) {
                 eliminarTareaById(id);
                 renderizarListaTareas();
+                renderizarListaCumplidas();
                 renderizarCalendario();
                 mostrarToast('Tarea eliminada', 'warning');
             }
@@ -3383,6 +3461,7 @@
             // Cerrar modal y actualizar UI
             cerrarModalEdicion();
             renderizarListaTareas();
+            renderizarListaCumplidas();
             renderizarCalendario();
 
             mostrarToast('Tarea modificada correctamente', 'success');
