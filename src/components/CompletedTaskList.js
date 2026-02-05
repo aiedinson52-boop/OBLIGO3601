@@ -81,7 +81,7 @@ function renderizarItemCumplido(tarea) {
                     </div>
                 </div>
                 <!-- Opcional: Botón para restaurar si se desea permitir desde aquí -->
-                <!-- <button class="btn btn-ghost" data-action="restaurar" data-id="${tarea.id}" title="Restaurar a pendientes">↩️</button> -->
+                <button class="btn btn-ghost" data-action="restaurar" data-id="${tarea.id}" title="Restaurar a pendientes">↩️</button>
             </div>
         </div>
     `;
