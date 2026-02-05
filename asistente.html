@@ -2678,7 +2678,7 @@
                         </button>
                     </div>
                     
-                    <div class="lista-tareas-cumplidas" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2);">
+                    <div class="lista-tareas-cumplidas" style="max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2);">
                         ${cumplidas.map(t => {
                 const fecha = new Date(t.fecha + 'T12:00:00');
                 const fechaFormateada = fecha.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
