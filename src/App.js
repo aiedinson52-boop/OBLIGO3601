@@ -172,6 +172,22 @@ function renderizarEstructura(user) {
         
         <!-- Contenedor para tareas cumplidas -->
         <div id="completed-tasks-container"></div>
+
+        <!-- Selector de Modo Persistente -->
+        <div class="card" style="margin-top: var(--space-4);">
+            <div class="card-header">
+                <h3 class="card-title">📱 Modo Dispositivo</h3>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);">
+                <button id="btn-sidebar-android" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                    Android
+                </button>
+                <button id="btn-sidebar-ios" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                    iPhone
+                </button>
+            </div>
+            <p id="Sidebar-msg" style="text-align: center; font-size: var(--font-size-xs); color: var(--color-gray-500); margin-top: var(--space-2);"></p>
+        </div>
       </aside>
     </main>
     
@@ -314,6 +330,49 @@ function configurarEventosGlobales() {
         const fecha = new Date(tarea.fecha);
         await irAHoy(document.getElementById('calendar-container'));
     });
+
+    // --- Lógica para botones del Sidebar ---
+    const btnSidebarAndroid = document.getElementById('btn-sidebar-android');
+    const btnSidebarIos = document.getElementById('btn-sidebar-ios');
+    const msgSidebar = document.getElementById('Sidebar-msg');
+
+    const updateSidebarState = () => {
+        const mode = localStorage.getItem('voice_mode');
+        btnSidebarAndroid.classList.remove('btn-primary');
+        btnSidebarIos.classList.remove('btn-primary');
+
+        if (mode === 'native') {
+            btnSidebarAndroid.classList.add('btn-primary');
+            msgSidebar.textContent = 'Modo Android Activo';
+        } else if (mode === 'cloud') {
+            btnSidebarIos.classList.add('btn-primary');
+            msgSidebar.textContent = 'Modo iPhone Activo';
+        } else {
+            msgSidebar.textContent = 'Seleccione dispositivo';
+        }
+    };
+
+    // Inicializar estado visual
+    updateSidebarState();
+
+    btnSidebarAndroid.addEventListener('click', () => {
+        if (localStorage.getItem('voice_mode') !== 'native') {
+            localStorage.setItem('voice_mode', 'native');
+            updateSidebarState();
+            mostrarNotificacion('Modo Android activado. Recargando...', 'success');
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+
+    btnSidebarIos.addEventListener('click', () => {
+        if (localStorage.getItem('voice_mode') !== 'cloud') {
+            localStorage.setItem('voice_mode', 'cloud');
+            updateSidebarState();
+            mostrarNotificacion('Modo iPhone activado. Recargando...', 'success');
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+
 }
 
 /**
