@@ -121,12 +121,23 @@ function renderizarEstructura(user) {
         <h1 class="app-title">🎙️ Asistente de Voz</h1>
         <p class="app-subtitle">Gestión de Tareas Colombia</p>
       </div>
-      <div class="header-right" style="display: flex; align-items: center; gap: var(--space-4);">
+      <div class="header-right" style="display: flex; align-items: center; gap: var(--space-2);">
         <div style="font-size: var(--font-size-xs); color: var(--color-gray-600); text-align: right; display: none; @media(min-width: 600px){display: block;}">
             Hola, ${user.displayName || user.email.split('@')[0]}
         </div>
+        
+        <!-- Botones Modo (Header) -->
+        <div style="display: flex; gap: var(--space-1);">
+            <button id="btn-header-android" class="btn btn-secondary" title="Modo Android" style="padding: var(--space-2); font-size: 1.2rem;">
+                📱
+            </button>
+            <button id="btn-header-ios" class="btn btn-secondary" title="Modo iPhone" style="padding: var(--space-2); font-size: 1.2rem;">
+                🍎
+            </button>
+        </div>
+
         <button class="btn btn-secondary" id="btn-today" title="Ir a hoy">
-          📅 Hoy
+          📅
         </button>
         <button class="btn btn-secondary" id="btn-settings" title="Configuración">
           ⚙️
@@ -172,22 +183,6 @@ function renderizarEstructura(user) {
         
         <!-- Contenedor para tareas cumplidas -->
         <div id="completed-tasks-container"></div>
-
-        <!-- Selector de Modo Persistente -->
-        <div class="card" style="margin-top: var(--space-4);">
-            <div class="card-header">
-                <h3 class="card-title">📱 Modo Dispositivo</h3>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);">
-                <button id="btn-sidebar-android" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
-                    Android
-                </button>
-                <button id="btn-sidebar-ios" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
-                    iPhone
-                </button>
-            </div>
-            <p id="Sidebar-msg" style="text-align: center; font-size: var(--font-size-xs); color: var(--color-gray-500); margin-top: var(--space-2);"></p>
-        </div>
       </aside>
     </main>
     
@@ -252,33 +247,50 @@ function configurarEventosGlobales() {
         const btnAndroid = document.getElementById('btn-setting-android');
         const btnIos = document.getElementById('btn-setting-ios');
 
-        btnAndroid.classList.remove('btn-primary');
-        btnIos.classList.remove('btn-primary');
+        if (btnAndroid) btnAndroid.classList.remove('btn-primary');
+        if (btnIos) btnIos.classList.remove('btn-primary');
 
-        if (currentMode === 'native') btnAndroid.classList.add('btn-primary');
-        if (currentMode === 'cloud') btnIos.classList.add('btn-primary');
+        if (currentMode === 'native' && btnAndroid) btnAndroid.classList.add('btn-primary');
+        if (currentMode === 'cloud' && btnIos) btnIos.classList.add('btn-primary');
 
-        document.getElementById('setting-voice-msg').textContent = '';
+        const msg = document.getElementById('setting-voice-msg');
+        if (msg) msg.textContent = '';
     });
 
-    // Listeners botones modo voz
-    document.getElementById('btn-setting-android').addEventListener('click', () => {
-        localStorage.setItem('voice_mode', 'native');
-        document.getElementById('btn-setting-android').classList.add('btn-primary');
-        document.getElementById('btn-setting-ios').classList.remove('btn-primary');
-        document.getElementById('setting-voice-msg').textContent = 'Modo Android activado. (Recargando...)';
-        document.getElementById('setting-voice-msg').style.color = 'var(--color-success)';
-        setTimeout(() => location.reload(), 1000);
-    });
+    // Listeners botones modo voz (Settings)
+    const btnSetAndroid = document.getElementById('btn-setting-android');
+    if (btnSetAndroid) {
+        btnSetAndroid.addEventListener('click', () => {
+            localStorage.setItem('voice_mode', 'native');
+            btnSetAndroid.classList.add('btn-primary');
+            const btnSetIos = document.getElementById('btn-setting-ios');
+            if (btnSetIos) btnSetIos.classList.remove('btn-primary');
 
-    document.getElementById('btn-setting-ios').addEventListener('click', () => {
-        localStorage.setItem('voice_mode', 'cloud');
-        document.getElementById('btn-setting-ios').classList.add('btn-primary');
-        document.getElementById('btn-setting-android').classList.remove('btn-primary');
-        document.getElementById('setting-voice-msg').textContent = 'Modo iPhone activado. (Recargando...)';
-        document.getElementById('setting-voice-msg').style.color = 'var(--color-success)';
-        setTimeout(() => location.reload(), 1000);
-    });
+            const msg = document.getElementById('setting-voice-msg');
+            if (msg) {
+                msg.textContent = 'Modo Android activado. (Recargando...)';
+                msg.style.color = 'var(--color-success)';
+            }
+            setTimeout(() => location.reload(), 1000);
+        });
+    }
+
+    const btnSetIos = document.getElementById('btn-setting-ios');
+    if (btnSetIos) {
+        btnSetIos.addEventListener('click', () => {
+            localStorage.setItem('voice_mode', 'cloud');
+            btnSetIos.classList.add('btn-primary');
+            const btnSetAndroid = document.getElementById('btn-setting-android');
+            if (btnSetAndroid) btnSetAndroid.classList.remove('btn-primary');
+
+            const msg = document.getElementById('setting-voice-msg');
+            if (msg) {
+                msg.textContent = 'Modo iPhone activado. (Recargando...)';
+                msg.style.color = 'var(--color-success)';
+            }
+            setTimeout(() => location.reload(), 1000);
+        });
+    }
 
     // Cerrar configuración
     document.getElementById('btn-cancel-settings').addEventListener('click', () => {
@@ -331,48 +343,50 @@ function configurarEventosGlobales() {
         await irAHoy(document.getElementById('calendar-container'));
     });
 
-    // --- Lógica para botones del Sidebar ---
-    const btnSidebarAndroid = document.getElementById('btn-sidebar-android');
-    const btnSidebarIos = document.getElementById('btn-sidebar-ios');
-    const msgSidebar = document.getElementById('Sidebar-msg');
+    // --- Lógica para botones del Header (NUEVO) ---
+    const btnHeaderAndroid = document.getElementById('btn-header-android');
+    const btnHeaderIos = document.getElementById('btn-header-ios');
 
-    const updateSidebarState = () => {
+    const updateHeaderState = () => {
         const mode = localStorage.getItem('voice_mode');
-        btnSidebarAndroid.classList.remove('btn-primary');
-        btnSidebarIos.classList.remove('btn-primary');
+        if (btnHeaderAndroid) btnHeaderAndroid.classList.remove('btn-primary');
+        if (btnHeaderIos) btnHeaderIos.classList.remove('btn-primary');
 
-        if (mode === 'native') {
-            btnSidebarAndroid.classList.add('btn-primary');
-            msgSidebar.textContent = 'Modo Android Activo';
-        } else if (mode === 'cloud') {
-            btnSidebarIos.classList.add('btn-primary');
-            msgSidebar.textContent = 'Modo iPhone Activo';
-        } else {
-            msgSidebar.textContent = 'Seleccione dispositivo';
+        if (mode === 'native' && btnHeaderAndroid) {
+            btnHeaderAndroid.classList.add('btn-primary');
+        } else if (mode === 'cloud' && btnHeaderIos) {
+            btnHeaderIos.classList.add('btn-primary');
         }
     };
 
     // Inicializar estado visual
-    updateSidebarState();
+    updateHeaderState();
 
-    btnSidebarAndroid.addEventListener('click', () => {
-        if (localStorage.getItem('voice_mode') !== 'native') {
-            localStorage.setItem('voice_mode', 'native');
-            updateSidebarState();
-            mostrarNotificacion('Modo Android activado. Recargando...', 'success');
-            setTimeout(() => location.reload(), 1000);
-        }
-    });
+    if (btnHeaderAndroid) {
+        btnHeaderAndroid.addEventListener('click', () => {
+            if (localStorage.getItem('voice_mode') !== 'native') {
+                localStorage.setItem('voice_mode', 'native');
+                updateHeaderState();
+                mostrarNotificacion('Modo Android activado. Recargando...', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                mostrarNotificacion('Modo Android ya está activo', 'info');
+            }
+        });
+    }
 
-    btnSidebarIos.addEventListener('click', () => {
-        if (localStorage.getItem('voice_mode') !== 'cloud') {
-            localStorage.setItem('voice_mode', 'cloud');
-            updateSidebarState();
-            mostrarNotificacion('Modo iPhone activado. Recargando...', 'success');
-            setTimeout(() => location.reload(), 1000);
-        }
-    });
-
+    if (btnHeaderIos) {
+        btnHeaderIos.addEventListener('click', () => {
+            if (localStorage.getItem('voice_mode') !== 'cloud') {
+                localStorage.setItem('voice_mode', 'cloud');
+                updateHeaderState();
+                mostrarNotificacion('Modo iPhone activado. Recargando...', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                mostrarNotificacion('Modo iPhone ya está activo', 'info');
+            }
+        });
+    }
 }
 
 /**
