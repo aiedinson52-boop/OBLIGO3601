@@ -149,6 +149,12 @@ function manejarCambioEstado(estado) {
             transcriptElement.classList.remove('active');
             break;
 
+        case 'processing':
+            buttonElement.classList.add('listening'); // Maintain pulse effect
+            mostrarEstado('Procesando audio...', 'processing');
+            transcriptElement.textContent = 'Procesando...';
+            break;
+
         case 'stopped':
             buttonElement.classList.remove('listening');
             mostrarEstado('Presione el botón y hable', 'idle');
@@ -177,6 +183,10 @@ function mostrarEstado(mensaje, tipo) {
         case 'listening':
             color = 'var(--color-primary-500)';
             icon = '🎤 ';
+            break;
+        case 'processing': // New case
+            color = 'var(--color-info-500, #3b82f6)';
+            icon = '🔄 ';
             break;
         case 'error':
             color = 'var(--color-danger)';

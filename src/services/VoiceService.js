@@ -1,166 +1,237 @@
 /**
  * Servicio de Reconocimiento de Voz
- * Utiliza Web Speech API con español colombiano (es-CO)
+ * Implementa Strategy Pattern para soportar:
+ * 1. NativeStrategy: Web Speech API (Android/Desktop)
+ * 2. CloudStrategy: MediaRecorder + Gemini (iOS)
  */
 
-let recognition = null;
+import { transcribirAudio } from './GeminiService.js';
+
+let strategy = null;
 let synthesis = null;
-let isListening = false;
 let onResultCallback = null;
 let onErrorCallback = null;
 let onStatusChangeCallback = null;
 
-/**
- * Verifica si el navegador soporta Web Speech API
- * @returns {boolean} true si es soportado
- */
+// ==========================================
+// ESTRATEGIAS
+// ==========================================
+
+class NativeStrategy {
+    constructor() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
+        this.recognition.lang = 'es-CO';
+        this.recognition.continuous = false;
+        this.recognition.interimResults = true;
+        this.recognition.maxAlternatives = 1;
+
+        this.isListening = false;
+
+        this.recognition.onstart = () => {
+            this.isListening = true;
+            if (onStatusChangeCallback) onStatusChangeCallback('listening');
+        };
+
+        this.recognition.onend = () => {
+            this.isListening = false;
+            if (onStatusChangeCallback) onStatusChangeCallback('stopped');
+        };
+
+        this.recognition.onresult = (event) => {
+            let finalTranscript = '';
+            let interimTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            if (onResultCallback) {
+                onResultCallback({
+                    final: finalTranscript,
+                    interim: interimTranscript,
+                    isFinal: finalTranscript.length > 0
+                });
+            }
+        };
+
+        this.recognition.onerror = (event) => {
+            this.isListening = false;
+            handleError(event.error);
+        };
+    }
+
+    start() {
+        try {
+            this.recognition.start();
+            return true;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
+    }
+
+    stop() {
+        this.recognition.stop();
+    }
+
+    isActive() {
+        return this.isListening;
+    }
+}
+
+class CloudStrategy {
+    constructor() {
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isListening = false;
+    }
+
+    async start() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.mediaRecorder = new MediaRecorder(stream);
+            this.audioChunks = [];
+
+            this.mediaRecorder.ondataavailable = (event) => {
+                this.audioChunks.push(event.data);
+            };
+
+            this.mediaRecorder.onstart = () => {
+                this.isListening = true;
+                if (onStatusChangeCallback) onStatusChangeCallback('listening');
+            };
+
+            this.mediaRecorder.onstop = async () => {
+                this.isListening = false;
+                // Detener tracks del stream
+                stream.getTracks().forEach(track => track.stop());
+
+                if (onStatusChangeCallback) onStatusChangeCallback('processing');
+
+                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+
+                try {
+                    const texto = await transcribirAudio(audioBlob);
+                    if (onResultCallback) {
+                        onResultCallback({
+                            final: texto,
+                            interim: '',
+                            isFinal: true
+                        });
+                    }
+                    if (onStatusChangeCallback) onStatusChangeCallback('stopped');
+                } catch (error) {
+                    handleError('transcription-failed');
+                }
+            };
+
+            this.mediaRecorder.start();
+            return true;
+        } catch (error) {
+            console.error('Error MediaRecorder:', error);
+            handleError('audio-capture');
+            return false;
+        }
+    }
+
+    stop() {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
+    }
+
+    isActive() {
+        return this.isListening;
+    }
+}
+
+function handleError(errorCode) {
+    const mensajesError = {
+        'no-speech': 'No se detectó ningún audio. Por favor, intente de nuevo.',
+        'audio-capture': 'No se pudo acceder al micrófono. Verifique los permisos.',
+        'not-allowed': 'El acceso al micrófono fue denegado. Por favor, permita el acceso.',
+        'network': 'Error de red. Verifique su conexión a internet.',
+        'aborted': 'El reconocimiento fue cancelado.',
+        'language-not-supported': 'El idioma español (Colombia) no está soportado.',
+        'transcription-failed': 'Falló la transcripción en la nube.',
+        'gemini-unavailable': 'El servicio de transcripción no está configurado.'
+    };
+
+    const mensaje = mensajesError[errorCode] || `Error de reconocimiento: ${errorCode}`;
+    if (onErrorCallback) onErrorCallback(mensaje);
+    if (onStatusChangeCallback) onStatusChangeCallback('error');
+}
+
+// ==========================================
+// API PÚBLICA
+// ==========================================
+
 export function soportaReconocimientoVoz() {
+    // Si estamos en modo cloud, verificamos MediaRecorder
+    const mode = localStorage.getItem('voice_mode');
+    if (mode === 'cloud') {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+    }
+    // Modo nativo
     return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
 }
 
-/**
- * Verifica si el navegador soporta síntesis de voz
- * @returns {boolean} true si es soportado
- */
 export function soportaSintesisVoz() {
     return 'speechSynthesis' in window;
 }
 
-/**
- * Inicializa el servicio de reconocimiento de voz
- * @param {Object} callbacks - Callbacks para eventos
- */
 export function inicializarVoz(callbacks = {}) {
-    if (!soportaReconocimientoVoz()) {
-        console.error('El navegador no soporta reconocimiento de voz');
-        return false;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-
-    // Configuración para español colombiano
-    recognition.lang = 'es-CO';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-
-    // Callbacks
     onResultCallback = callbacks.onResult || null;
     onErrorCallback = callbacks.onError || null;
     onStatusChangeCallback = callbacks.onStatusChange || null;
 
-    // Eventos del reconocimiento
-    recognition.onstart = () => {
-        isListening = true;
-        if (onStatusChangeCallback) {
-            onStatusChangeCallback('listening');
-        }
-    };
+    // Determinar estrategia
+    const mode = localStorage.getItem('voice_mode') || 'native';
 
-    recognition.onend = () => {
-        isListening = false;
-        if (onStatusChangeCallback) {
-            onStatusChangeCallback('stopped');
-        }
-    };
-
-    recognition.onresult = (event) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-
-            if (event.results[i].isFinal) {
-                finalTranscript += transcript;
-            } else {
-                interimTranscript += transcript;
+    if (mode === 'cloud') {
+        if (navigator.mediaDevices && window.MediaRecorder) {
+            strategy = new CloudStrategy();
+        } else {
+            console.warn('Modo Cloud no soportado, fallback a nativo');
+            // Fallback logic could go here, but for now we try native if available
+            if (soportaReconocimientoVoz()) {
+                strategy = new NativeStrategy();
             }
         }
-
-        if (onResultCallback) {
-            onResultCallback({
-                final: finalTranscript,
-                interim: interimTranscript,
-                isFinal: finalTranscript.length > 0
-            });
+    } else {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            strategy = new NativeStrategy();
         }
-    };
+    }
 
-    recognition.onerror = (event) => {
-        isListening = false;
-
-        const mensajesError = {
-            'no-speech': 'No se detectó ningún audio. Por favor, intente de nuevo.',
-            'audio-capture': 'No se pudo acceder al micrófono. Verifique los permisos.',
-            'not-allowed': 'El acceso al micrófono fue denegado. Por favor, permita el acceso.',
-            'network': 'Error de red. Verifique su conexión a internet.',
-            'aborted': 'El reconocimiento fue cancelado.',
-            'language-not-supported': 'El idioma español (Colombia) no está soportado.'
-        };
-
-        const mensaje = mensajesError[event.error] || `Error de reconocimiento: ${event.error}`;
-
-        if (onErrorCallback) {
-            onErrorCallback(mensaje);
-        }
-
-        if (onStatusChangeCallback) {
-            onStatusChangeCallback('error');
-        }
-    };
-
-    // Inicializar síntesis de voz
+    // Inicializar síntesis (común)
     if (soportaSintesisVoz()) {
         synthesis = window.speechSynthesis;
     }
 
-    return true;
+    return !!strategy;
 }
 
-/**
- * Inicia el reconocimiento de voz
- */
 export function iniciarEscucha() {
-    if (!recognition) {
-        console.error('El servicio de voz no está inicializado');
-        return false;
-    }
-
-    if (isListening) {
-        console.warn('Ya se está escuchando');
-        return false;
-    }
-
-    try {
-        recognition.start();
-        return true;
-    } catch (error) {
-        console.error('Error iniciando reconocimiento:', error);
-        return false;
-    }
+    if (!strategy) return false;
+    if (strategy.isActive()) return false;
+    return strategy.start();
 }
 
-/**
- * Detiene el reconocimiento de voz
- */
 export function detenerEscucha() {
-    if (!recognition) {
-        return;
-    }
-
-    if (isListening) {
-        recognition.stop();
-    }
+    if (!strategy) return;
+    if (strategy.isActive()) strategy.stop();
 }
 
-/**
- * Alterna el estado de escucha
- * @returns {boolean} Nuevo estado de escucha
- */
 export function alternarEscucha() {
-    if (isListening) {
+    if (!strategy) return false;
+    if (strategy.isActive()) {
         detenerEscucha();
         return false;
     } else {
@@ -169,12 +240,8 @@ export function alternarEscucha() {
     }
 }
 
-/**
- * Verifica si está escuchando actualmente
- * @returns {boolean} true si está escuchando
- */
 export function estaEscuchando() {
-    return isListening;
+    return strategy ? strategy.isActive() : false;
 }
 
 /**

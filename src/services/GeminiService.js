@@ -21,7 +21,7 @@ export function inicializarGemini(apiKey) {
 
     try {
         genAI = new GoogleGenerativeAI(apiKey);
-        model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         return true;
     } catch (error) {
         console.error('Error inicializando Gemini:', error);
@@ -68,7 +68,60 @@ Ejemplo de respuesta:
   "prioridad": "alta",
   "ambiguo": false,
   "preguntaClarificacion": null
-}`;
+}
+`;
+
+/**
+ * Transcribe un archivo de audio usando Gemini
+ * @param {Blob} audioBlob - Blob del audio grabado
+ * @returns {Promise<string>} Texto transcrito
+ */
+export async function transcribirAudio(audioBlob) {
+    if (!geminiDisponible()) {
+        throw new Error('Gemini no está disponible para transcripción');
+    }
+
+    try {
+        const base64Audio = await blobToBase64(audioBlob);
+
+        const prompt = "Transcribe el siguiente audio exactamente como se escucha, en español colombiano. Solo responde con el texto transcrito, sin explicaciones adicionales.";
+
+        // Crear partes del contenido para el modelo multimodal
+        const parts = [
+            { text: prompt },
+            {
+                inlineData: {
+                    mimeType: audioBlob.type || 'audio/webm',
+                    data: base64Audio
+                }
+            }
+        ];
+
+        const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
+        const response = await result.response;
+        return response.text().trim();
+    } catch (error) {
+        console.error('Error transcribiendo audio con Gemini:', error);
+        throw error;
+    }
+}
+
+/**
+ * Convierte un Blob a Base64
+ * @param {Blob} blob 
+ * @returns {Promise<string>}
+ */
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result.split(',')[1];
+            resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
 
 /**
  * Extrae información de tarea usando Gemini

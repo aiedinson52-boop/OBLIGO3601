@@ -53,6 +53,21 @@ export function renderLogin(containerElement, callbacks = {}) {
                     <p style="text-align: center; margin-top: var(--space-4); font-size: var(--font-size-sm);">
                         ¿No tienes cuenta? <a href="#" id="toggle-register" style="color: var(--color-primary-600); text-decoration: none; font-weight: 500;">Regístrate aquí</a>
                     </p>
+
+                    <div style="margin-top: var(--space-6); border-top: 1px solid var(--color-gray-200); padding-top: var(--space-4);">
+                        <p style="text-align: center; color: var(--color-gray-500); font-size: var(--font-size-xs); margin-bottom: var(--space-3);">
+                            Optimización por dispositivo
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+                            <button id="btn-mode-android" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                                📱 App Android
+                            </button>
+                            <button id="btn-mode-ios" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                                🍎 App iPhone
+                            </button>
+                        </div>
+                        <div id="device-msg" style="text-align: center; font-size: var(--font-size-xs); margin-top: var(--space-2); min-height: 20px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -65,7 +80,58 @@ export function renderLogin(containerElement, callbacks = {}) {
     const submitBtn = form.querySelector('button[type="submit"]');
     const loginError = containerElement.querySelector('#login-error');
 
+    // Botones de modo
+    const btnAndroid = containerElement.querySelector('#btn-mode-android');
+    const btnIos = containerElement.querySelector('#btn-mode-ios');
+    const deviceMsg = containerElement.querySelector('#device-msg');
+
     let isRegistering = false;
+
+    // Lógica de detección y selección de modo
+    const setDeviceMode = (mode, expectedOS, buttonClicked) => {
+        const ua = navigator.userAgent.toLowerCase();
+        const isAndroid = ua.includes('android');
+        const isIOS = /iphone|ipad|ipod/.test(ua);
+
+        // Reset botones
+        btnAndroid.style.borderColor = '';
+        btnIos.style.borderColor = '';
+        btnAndroid.classList.remove('btn-primary');
+        btnIos.classList.remove('btn-primary');
+
+        let message = '';
+        let color = 'var(--color-success)';
+
+        // Verificación de dispositivo
+        if (expectedOS === 'android' && !isAndroid && !ua.includes('windows')) { // Permitir pruebas en Windows
+            message = '⚠️ Estás en un dispositivo no Android. Se activará el modo Android de todos modos.';
+            color = 'var(--color-warning)';
+        } else if (expectedOS === 'ios' && !isIOS && !ua.includes('windows')) {
+            message = '⚠️ Estás en un dispositivo no iOS. Se activará el modo iPhone de todos modos.';
+            color = 'var(--color-warning)';
+        } else {
+            message = `✅ Modo ${expectedOS === 'android' ? 'Android' : 'iPhone'} activado correctamente.`;
+        }
+
+        // Guardar preferencia
+        localStorage.setItem('voice_mode', mode);
+
+        // Feedback visual
+        deviceMsg.textContent = message;
+        deviceMsg.style.color = color;
+        buttonClicked.classList.add('btn-primary'); // Resaltar selección
+    };
+
+    // Auto-detectar al cargar (opcional, pero buena UX)
+    const currentMode = localStorage.getItem('voice_mode');
+    if (currentMode === 'native') {
+        btnAndroid.classList.add('btn-primary');
+    } else if (currentMode === 'cloud') {
+        btnIos.classList.add('btn-primary');
+    }
+
+    btnAndroid.addEventListener('click', () => setDeviceMode('native', 'android', btnAndroid));
+    btnIos.addEventListener('click', () => setDeviceMode('cloud', 'ios', btnIos));
 
     // Login con Google
     googleBtn.addEventListener('click', async () => {
