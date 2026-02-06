@@ -1,0 +1,45 @@
+{
+    "name": "Obligo360 - Asistente de Tareas",
+    "short_name": "Obligo360",
+    "description": "Tu asistente de voz para cumplir sin estrés - Gestión de tareas con calendario colombiano",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1a1a2e",
+    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "es-CO",
+    "icons": [
+        {
+            "src": "/icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        }
+    ],
+    "categories": [
+        "productivity",
+        "utilities"
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Nueva Tarea",
+            "short_name": "Nueva",
+            "description": "Crear una nueva tarea por voz",
+            "url": "/?action=new-task",
+            "icons": [
+                {
+                    "src": "/icons/icon.svg",
+                    "sizes": "any"
+                }
+            ]
+        }
+    ]
+}
