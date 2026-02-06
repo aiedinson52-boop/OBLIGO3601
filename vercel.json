@@ -1,11 +1,15 @@
 {
     "rewrites": [
         {
+            "source": "/api/(.*)",
+            "destination": "/api/$1"
+        },
+        {
             "source": "/",
             "destination": "/asistente.html"
         },
         {
-            "source": "/(.*)",
+            "source": "/((?!api/).*)",
             "destination": "/asistente.html"
         }
     ],

@@ -261,34 +261,34 @@ function configurarEventosGlobales() {
     const btnSetAndroid = document.getElementById('btn-setting-android');
     if (btnSetAndroid) {
         btnSetAndroid.addEventListener('click', () => {
-            localStorage.setItem('voice_mode', 'native');
+            localStorage.setItem('selected_device', 'android');
+            localStorage.setItem('voice_mode', 'streaming');
             btnSetAndroid.classList.add('btn-primary');
             const btnSetIos = document.getElementById('btn-setting-ios');
             if (btnSetIos) btnSetIos.classList.remove('btn-primary');
 
             const msg = document.getElementById('setting-voice-msg');
             if (msg) {
-                msg.textContent = 'Modo Android activado. (Recargando...)';
+                msg.textContent = '✅ Modo Android activado';
                 msg.style.color = 'var(--color-success)';
             }
-            setTimeout(() => location.reload(), 1000);
         });
     }
 
     const btnSetIos = document.getElementById('btn-setting-ios');
     if (btnSetIos) {
         btnSetIos.addEventListener('click', () => {
-            localStorage.setItem('voice_mode', 'cloud');
+            localStorage.setItem('selected_device', 'ios');
+            localStorage.setItem('voice_mode', 'streaming');
             btnSetIos.classList.add('btn-primary');
             const btnSetAndroid = document.getElementById('btn-setting-android');
             if (btnSetAndroid) btnSetAndroid.classList.remove('btn-primary');
 
             const msg = document.getElementById('setting-voice-msg');
             if (msg) {
-                msg.textContent = 'Modo iPhone activado. (Recargando...)';
+                msg.textContent = '✅ Modo iPhone activado';
                 msg.style.color = 'var(--color-success)';
             }
-            setTimeout(() => location.reload(), 1000);
         });
     }
 
@@ -348,13 +348,13 @@ function configurarEventosGlobales() {
     const btnHeaderIos = document.getElementById('btn-header-ios');
 
     const updateHeaderState = () => {
-        const mode = localStorage.getItem('voice_mode');
+        const selectedDevice = localStorage.getItem('selected_device');
         if (btnHeaderAndroid) btnHeaderAndroid.classList.remove('btn-primary');
         if (btnHeaderIos) btnHeaderIos.classList.remove('btn-primary');
 
-        if (mode === 'native' && btnHeaderAndroid) {
+        if (selectedDevice === 'android' && btnHeaderAndroid) {
             btnHeaderAndroid.classList.add('btn-primary');
-        } else if (mode === 'cloud' && btnHeaderIos) {
+        } else if (selectedDevice === 'ios' && btnHeaderIos) {
             btnHeaderIos.classList.add('btn-primary');
         }
     };
@@ -364,27 +364,19 @@ function configurarEventosGlobales() {
 
     if (btnHeaderAndroid) {
         btnHeaderAndroid.addEventListener('click', () => {
-            if (localStorage.getItem('voice_mode') !== 'native') {
-                localStorage.setItem('voice_mode', 'native');
-                updateHeaderState();
-                mostrarNotificacion('Modo Android activado. Recargando...', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                mostrarNotificacion('Modo Android ya está activo', 'info');
-            }
+            localStorage.setItem('selected_device', 'android');
+            localStorage.setItem('voice_mode', 'streaming');
+            updateHeaderState();
+            mostrarNotificacion('✅ Modo Android activado', 'success');
         });
     }
 
     if (btnHeaderIos) {
         btnHeaderIos.addEventListener('click', () => {
-            if (localStorage.getItem('voice_mode') !== 'cloud') {
-                localStorage.setItem('voice_mode', 'cloud');
-                updateHeaderState();
-                mostrarNotificacion('Modo iPhone activado. Recargando...', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                mostrarNotificacion('Modo iPhone ya está activo', 'info');
-            }
+            localStorage.setItem('selected_device', 'ios');
+            localStorage.setItem('voice_mode', 'streaming');
+            updateHeaderState();
+            mostrarNotificacion('✅ Modo iPhone activado', 'success');
         });
     }
 }

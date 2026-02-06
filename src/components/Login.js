@@ -1,11 +1,17 @@
 /**
  * Componente de Login
- * Muestra formulario de inicio de sesión
+ * Muestra formulario de inicio de sesión con detección de dispositivo
  */
 import { loginWithGoogle, loginWithEmail, registerWithEmail } from '../services/AuthService.js';
+import { detectDevice, detectBrowser, autoConfigureVoiceMode, getDeviceInfo } from '../services/DeviceService.js';
 
 export function renderLogin(containerElement, callbacks = {}) {
     if (!containerElement) return;
+
+    // Auto-detectar dispositivo al cargar
+    autoConfigureVoiceMode();
+    const deviceInfo = getDeviceInfo();
+    const detectedDevice = deviceInfo.device;
 
     containerElement.innerHTML = `
         <div class="login-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; max-width: 400px; margin: 0 auto;">
@@ -55,14 +61,17 @@ export function renderLogin(containerElement, callbacks = {}) {
                     </p>
 
                     <div style="margin-top: var(--space-6); border-top: 1px solid var(--color-gray-200); padding-top: var(--space-4);">
-                        <p style="text-align: center; color: var(--color-gray-500); font-size: var(--font-size-xs); margin-bottom: var(--space-3);">
-                            Optimización por dispositivo
+                        <p style="text-align: center; color: var(--color-gray-500); font-size: var(--font-size-xs); margin-bottom: var(--space-2);">
+                            Optimización de voz por dispositivo
                         </p>
+                        <div id="device-detected" style="text-align: center; font-size: var(--font-size-xs); color: var(--color-success); margin-bottom: var(--space-3);">
+                            ${getDeviceDetectedMessage(detectedDevice)}
+                        </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-                            <button id="btn-mode-android" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                            <button id="btn-mode-android" class="btn ${detectedDevice === 'android' ? 'btn-primary' : 'btn-secondary'}" style="justify-content: center; font-size: var(--font-size-xs);">
                                 📱 App Android
                             </button>
-                            <button id="btn-mode-ios" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                            <button id="btn-mode-ios" class="btn ${detectedDevice === 'ios' ? 'btn-primary' : 'btn-secondary'}" style="justify-content: center; font-size: var(--font-size-xs);">
                                 🍎 App iPhone
                             </button>
                         </div>
@@ -87,51 +96,43 @@ export function renderLogin(containerElement, callbacks = {}) {
 
     let isRegistering = false;
 
-    // Lógica de detección y selección de modo
-    const setDeviceMode = (mode, expectedOS, buttonClicked) => {
-        const ua = navigator.userAgent.toLowerCase();
-        const isAndroid = ua.includes('android');
-        const isIOS = /iphone|ipad|ipod/.test(ua);
+    // Lógica de selección de modo (sin recarga)
+    const setDeviceMode = (selectedDevice, buttonClicked) => {
+        const actualDevice = detectDevice();
 
         // Reset botones
-        btnAndroid.style.borderColor = '';
-        btnIos.style.borderColor = '';
         btnAndroid.classList.remove('btn-primary');
         btnIos.classList.remove('btn-primary');
+        btnAndroid.classList.add('btn-secondary');
+        btnIos.classList.add('btn-secondary');
 
         let message = '';
         let color = 'var(--color-success)';
 
         // Verificación de dispositivo
-        if (expectedOS === 'android' && !isAndroid && !ua.includes('windows')) { // Permitir pruebas en Windows
-            message = '⚠️ Estás en un dispositivo no Android. Se activará el modo Android de todos modos.';
+        if (selectedDevice === 'android' && actualDevice !== 'android' && actualDevice !== 'desktop') {
+            message = '⚠️ Estás en un dispositivo iOS. Modo Android activado de todos modos.';
             color = 'var(--color-warning)';
-        } else if (expectedOS === 'ios' && !isIOS && !ua.includes('windows')) {
-            message = '⚠️ Estás en un dispositivo no iOS. Se activará el modo iPhone de todos modos.';
+        } else if (selectedDevice === 'ios' && actualDevice !== 'ios' && actualDevice !== 'desktop') {
+            message = '⚠️ Estás en un dispositivo Android. Modo iPhone activado de todos modos.';
             color = 'var(--color-warning)';
         } else {
-            message = `✅ Modo ${expectedOS === 'android' ? 'Android' : 'iPhone'} activado correctamente.`;
+            message = `✅ Modo ${selectedDevice === 'android' ? 'Android' : 'iPhone'} activado.`;
         }
 
-        // Guardar preferencia
-        localStorage.setItem('voice_mode', mode);
+        // Guardar preferencia (streaming mode se usa siempre, esto es para tracking)
+        localStorage.setItem('selected_device', selectedDevice);
+        localStorage.setItem('voice_mode', 'streaming');
 
         // Feedback visual
         deviceMsg.textContent = message;
         deviceMsg.style.color = color;
-        buttonClicked.classList.add('btn-primary'); // Resaltar selección
+        buttonClicked.classList.remove('btn-secondary');
+        buttonClicked.classList.add('btn-primary');
     };
 
-    // Auto-detectar al cargar (opcional, pero buena UX)
-    const currentMode = localStorage.getItem('voice_mode');
-    if (currentMode === 'native') {
-        btnAndroid.classList.add('btn-primary');
-    } else if (currentMode === 'cloud') {
-        btnIos.classList.add('btn-primary');
-    }
-
-    btnAndroid.addEventListener('click', () => setDeviceMode('native', 'android', btnAndroid));
-    btnIos.addEventListener('click', () => setDeviceMode('cloud', 'ios', btnIos));
+    btnAndroid.addEventListener('click', () => setDeviceMode('android', btnAndroid));
+    btnIos.addEventListener('click', () => setDeviceMode('ios', btnIos));
 
     // Login con Google
     googleBtn.addEventListener('click', async () => {
@@ -208,4 +209,20 @@ export function renderLogin(containerElement, callbacks = {}) {
             submitBtn.textContent = isRegistering ? 'Registrarse' : 'Iniciar Sesión';
         }
     });
+}
+
+/**
+ * Genera mensaje de dispositivo detectado
+ * @param {string} device - Tipo de dispositivo
+ * @returns {string} Mensaje HTML
+ */
+function getDeviceDetectedMessage(device) {
+    switch (device) {
+        case 'android':
+            return '📱 Detectado: Android - Modo optimizado activado automáticamente';
+        case 'ios':
+            return '🍎 Detectado: iPhone/iPad - Modo optimizado activado automáticamente';
+        default:
+            return '💻 Detectado: Escritorio - Seleccione un modo si usa móvil';
+    }
 }

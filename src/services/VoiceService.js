@@ -1,11 +1,12 @@
 /**
  * Servicio de Reconocimiento de Voz
- * Implementa Strategy Pattern para soportar:
- * 1. NativeStrategy: Web Speech API (Android/Desktop)
- * 2. CloudStrategy: MediaRecorder + Gemini (iOS)
+ * Implementa MediaRecorder + Backend STT (Deepgram)
+ * Compatible con Android Chrome e iOS Safari
+ * 
+ * NOTA: NO usa SpeechRecognition/webkitSpeechRecognition
  */
 
-import { transcribirAudio } from './GeminiService.js';
+import { getAudioConfig, isMediaRecorderSupported, detectDevice } from './DeviceService.js';
 
 let strategy = null;
 let synthesis = null;
@@ -14,92 +15,47 @@ let onErrorCallback = null;
 let onStatusChangeCallback = null;
 
 // ==========================================
-// ESTRATEGIAS
+// ESTRATEGIA: Streaming con Backend STT
 // ==========================================
 
-class NativeStrategy {
-    constructor() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.recognition = new SpeechRecognition();
-        this.recognition.lang = 'es-CO';
-        this.recognition.continuous = false;
-        this.recognition.interimResults = true;
-        this.recognition.maxAlternatives = 1;
-
-        this.isListening = false;
-
-        this.recognition.onstart = () => {
-            this.isListening = true;
-            if (onStatusChangeCallback) onStatusChangeCallback('listening');
-        };
-
-        this.recognition.onend = () => {
-            this.isListening = false;
-            if (onStatusChangeCallback) onStatusChangeCallback('stopped');
-        };
-
-        this.recognition.onresult = (event) => {
-            let finalTranscript = '';
-            let interimTranscript = '';
-
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
-                } else {
-                    interimTranscript += transcript;
-                }
-            }
-
-            if (onResultCallback) {
-                onResultCallback({
-                    final: finalTranscript,
-                    interim: interimTranscript,
-                    isFinal: finalTranscript.length > 0
-                });
-            }
-        };
-
-        this.recognition.onerror = (event) => {
-            this.isListening = false;
-            handleError(event.error);
-        };
-    }
-
-    start() {
-        try {
-            this.recognition.start();
-            return true;
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    }
-
-    stop() {
-        this.recognition.stop();
-    }
-
-    isActive() {
-        return this.isListening;
-    }
-}
-
-class CloudStrategy {
+class StreamingStrategy {
     constructor() {
         this.mediaRecorder = null;
         this.audioChunks = [];
+        this.stream = null;
         this.isListening = false;
+        this.audioConfig = getAudioConfig();
     }
 
     async start() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream);
+            // Obtener stream de micrófono
+            this.stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: this.audioConfig.channelCount || 1,
+                    sampleRate: this.audioConfig.sampleRate || 16000,
+                    echoCancellation: this.audioConfig.echoCancellation ?? true,
+                    noiseSuppression: this.audioConfig.noiseSuppression ?? true,
+                    autoGainControl: this.audioConfig.autoGainControl ?? true
+                }
+            });
+
+            // Configurar MediaRecorder con opciones específicas de plataforma
+            const recorderOptions = {};
+            if (this.audioConfig.mimeType) {
+                recorderOptions.mimeType = this.audioConfig.mimeType;
+            }
+            if (this.audioConfig.audioBitsPerSecond) {
+                recorderOptions.audioBitsPerSecond = this.audioConfig.audioBitsPerSecond;
+            }
+
+            this.mediaRecorder = new MediaRecorder(this.stream, recorderOptions);
             this.audioChunks = [];
 
             this.mediaRecorder.ondataavailable = (event) => {
-                this.audioChunks.push(event.data);
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                }
             };
 
             this.mediaRecorder.onstart = () => {
@@ -109,16 +65,22 @@ class CloudStrategy {
 
             this.mediaRecorder.onstop = async () => {
                 this.isListening = false;
+
                 // Detener tracks del stream
-                stream.getTracks().forEach(track => track.stop());
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                }
 
                 if (onStatusChangeCallback) onStatusChangeCallback('processing');
 
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                // Crear blob de audio
+                const audioBlob = new Blob(this.audioChunks, {
+                    type: this.audioConfig.mimeType || 'audio/webm'
+                });
 
                 try {
-                    const texto = await transcribirAudio(audioBlob);
-                    if (onResultCallback) {
+                    const texto = await this.transcribeAudio(audioBlob);
+                    if (texto && onResultCallback) {
                         onResultCallback({
                             final: texto,
                             interim: '',
@@ -127,15 +89,31 @@ class CloudStrategy {
                     }
                     if (onStatusChangeCallback) onStatusChangeCallback('stopped');
                 } catch (error) {
+                    console.error('[VoiceService] Error en transcripción:', error);
                     handleError('transcription-failed');
                 }
             };
 
+            this.mediaRecorder.onerror = (event) => {
+                console.error('[VoiceService] MediaRecorder error:', event.error);
+                this.isListening = false;
+                handleError('audio-capture');
+            };
+
+            // Iniciar grabación
             this.mediaRecorder.start();
             return true;
+
         } catch (error) {
-            console.error('Error MediaRecorder:', error);
-            handleError('audio-capture');
+            console.error('[VoiceService] Error iniciando grabación:', error);
+
+            if (error.name === 'NotAllowedError') {
+                handleError('not-allowed');
+            } else if (error.name === 'NotFoundError') {
+                handleError('no-microphone');
+            } else {
+                handleError('audio-capture');
+            }
             return false;
         }
     }
@@ -149,6 +127,59 @@ class CloudStrategy {
     isActive() {
         return this.isListening;
     }
+
+    /**
+     * Envía audio al backend para transcripción
+     * @param {Blob} audioBlob - Audio grabado
+     * @returns {Promise<string>} Texto transcrito
+     */
+    async transcribeAudio(audioBlob) {
+        // Convertir a base64
+        const base64Audio = await this.blobToBase64(audioBlob);
+
+        // Llamar al endpoint del backend
+        const response = await fetch('/api/voice-transcribe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                audio: base64Audio,
+                mimeType: audioBlob.type
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Transcription failed');
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Transcription failed');
+        }
+
+        console.log(`[VoiceService] Transcripción: "${result.transcript}" (confianza: ${result.confidence})`);
+        return result.transcript;
+    }
+
+    /**
+     * Convierte Blob a base64
+     * @param {Blob} blob 
+     * @returns {Promise<string>}
+     */
+    blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
 }
 
 function handleError(errorCode) {
@@ -156,11 +187,11 @@ function handleError(errorCode) {
         'no-speech': 'No se detectó ningún audio. Por favor, intente de nuevo.',
         'audio-capture': 'No se pudo acceder al micrófono. Verifique los permisos.',
         'not-allowed': 'El acceso al micrófono fue denegado. Por favor, permita el acceso.',
+        'no-microphone': 'No se detectó ningún micrófono en el dispositivo.',
         'network': 'Error de red. Verifique su conexión a internet.',
         'aborted': 'El reconocimiento fue cancelado.',
-        'language-not-supported': 'El idioma español (Colombia) no está soportado.',
-        'transcription-failed': 'Falló la transcripción en la nube.',
-        'gemini-unavailable': 'El servicio de transcripción no está configurado.'
+        'transcription-failed': 'Falló la transcripción. Intente de nuevo.',
+        'not-supported': 'El reconocimiento de voz no está soportado en este navegador.'
     };
 
     const mensaje = mensajesError[errorCode] || `Error de reconocimiento: ${errorCode}`;
@@ -173,13 +204,7 @@ function handleError(errorCode) {
 // ==========================================
 
 export function soportaReconocimientoVoz() {
-    // Si estamos en modo cloud, verificamos MediaRecorder
-    const mode = localStorage.getItem('voice_mode');
-    if (mode === 'cloud') {
-        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-    }
-    // Modo nativo
-    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    return isMediaRecorderSupported();
 }
 
 export function soportaSintesisVoz() {
@@ -191,23 +216,13 @@ export function inicializarVoz(callbacks = {}) {
     onErrorCallback = callbacks.onError || null;
     onStatusChangeCallback = callbacks.onStatusChange || null;
 
-    // Determinar estrategia
-    const mode = localStorage.getItem('voice_mode') || 'native';
-
-    if (mode === 'cloud') {
-        if (navigator.mediaDevices && window.MediaRecorder) {
-            strategy = new CloudStrategy();
-        } else {
-            console.warn('Modo Cloud no soportado, fallback a nativo');
-            // Fallback logic could go here, but for now we try native if available
-            if (soportaReconocimientoVoz()) {
-                strategy = new NativeStrategy();
-            }
-        }
+    // Usar siempre StreamingStrategy
+    if (isMediaRecorderSupported()) {
+        strategy = new StreamingStrategy();
+        console.log(`[VoiceService] Inicializado con StreamingStrategy (${detectDevice()})`);
     } else {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            strategy = new NativeStrategy();
-        }
+        console.error('[VoiceService] MediaRecorder no soportado');
+        return false;
     }
 
     // Inicializar síntesis (común)
