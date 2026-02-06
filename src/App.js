@@ -195,6 +195,19 @@ function renderizarEstructura(user) {
             La clave se guarda localmente en su navegador.
           </p>
         </div>
+
+        <div style="margin-top: var(--space-4); border-top: 1px solid var(--color-gray-200); padding-top: var(--space-4);">
+            <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-2); font-weight: 500;">Optimización de Voz</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+                <button id="btn-setting-android" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                    📱 Android
+                </button>
+                <button id="btn-setting-ios" class="btn btn-secondary" style="justify-content: center; font-size: var(--font-size-xs);">
+                    🍎 iPhone
+                </button>
+            </div>
+            <p id="setting-voice-msg" style="font-size: var(--font-size-xs); color: var(--color-gray-500); margin-top: var(--space-2); min-height: 20px;"></p>
+        </div>
         
         <div class="confirmation-actions">
           <button class="btn btn-secondary" id="btn-cancel-settings">Cancelar</button>
@@ -217,6 +230,38 @@ function configurarEventosGlobales() {
     // Botón de configuración
     document.getElementById('btn-settings').addEventListener('click', () => {
         document.getElementById('settings-dialog').classList.add('active');
+
+        // Actualizar estado botones modo voz
+        const currentMode = localStorage.getItem('voice_mode');
+        const btnAndroid = document.getElementById('btn-setting-android');
+        const btnIos = document.getElementById('btn-setting-ios');
+
+        btnAndroid.classList.remove('btn-primary');
+        btnIos.classList.remove('btn-primary');
+
+        if (currentMode === 'native') btnAndroid.classList.add('btn-primary');
+        if (currentMode === 'cloud') btnIos.classList.add('btn-primary');
+
+        document.getElementById('setting-voice-msg').textContent = '';
+    });
+
+    // Listeners botones modo voz
+    document.getElementById('btn-setting-android').addEventListener('click', () => {
+        localStorage.setItem('voice_mode', 'native');
+        document.getElementById('btn-setting-android').classList.add('btn-primary');
+        document.getElementById('btn-setting-ios').classList.remove('btn-primary');
+        document.getElementById('setting-voice-msg').textContent = 'Modo Android activado. (Recargando...)';
+        document.getElementById('setting-voice-msg').style.color = 'var(--color-success)';
+        setTimeout(() => location.reload(), 1000);
+    });
+
+    document.getElementById('btn-setting-ios').addEventListener('click', () => {
+        localStorage.setItem('voice_mode', 'cloud');
+        document.getElementById('btn-setting-ios').classList.add('btn-primary');
+        document.getElementById('btn-setting-android').classList.remove('btn-primary');
+        document.getElementById('setting-voice-msg').textContent = 'Modo iPhone activado. (Recargando...)';
+        document.getElementById('setting-voice-msg').style.color = 'var(--color-success)';
+        setTimeout(() => location.reload(), 1000);
     });
 
     // Cerrar configuración
