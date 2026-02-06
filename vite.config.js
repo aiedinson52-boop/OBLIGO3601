@@ -6,6 +6,7 @@ export default defineConfig({
         port: 5173,
         host: true
     },
+    publicDir: 'public',
     build: {
         outDir: 'dist',
         sourcemap: true,
@@ -13,7 +14,8 @@ export default defineConfig({
             input: {
                 main: resolve(__dirname, 'asistente.html')
             }
-        }
+        },
+        copyPublicDir: true
     },
     // Serve asistente.html as the default page
     appType: 'mpa'
