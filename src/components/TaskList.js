@@ -205,11 +205,13 @@ async function manejarAccionTarea(e) {
         break;
 
       case 'eliminar':
-        if (confirm('¿Está seguro de que desea eliminar esta tarea?')) {
+        // Solicitar contraseña para eliminar tarea pendiente
+        const passwordCorrect = await mostrarDialogoContrasena();
+        if (passwordCorrect) {
           await eliminarTarea(id);
           mostrarNotificacion('Tarea eliminada', 'warning');
         } else {
-          return;
+          return; // No eliminar si la contraseña es incorrecta o se cancela
         }
         break;
     }
@@ -226,6 +228,247 @@ async function manejarAccionTarea(e) {
     console.error('Error en acción de tarea:', error);
     mostrarNotificacion('Error al procesar la acción', 'error');
   }
+}
+
+/**
+ * Muestra un diálogo para solicitar contraseña de confirmación para eliminar tarea
+ * @returns {Promise<boolean>} true si la contraseña es correcta, false en caso contrario
+ */
+function mostrarDialogoContrasena() {
+  return new Promise((resolve) => {
+    // Crear el overlay del modal
+    const overlay = document.createElement('div');
+    overlay.className = 'password-modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      backdrop-filter: blur(4px);
+    `;
+
+    // Crear el contenido del modal
+    const modal = document.createElement('div');
+    modal.className = 'password-modal';
+    modal.style.cssText = `
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      animation: modalSlideIn 0.3s ease-out;
+    `;
+
+    modal.innerHTML = `
+      <style>
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-8px); }
+          75% { transform: translateX(8px); }
+        }
+        .password-modal-title {
+          color: #fff;
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .password-modal-subtitle {
+          color: #a0aec0;
+          font-size: 0.875rem;
+          margin-bottom: 20px;
+        }
+        .password-input-container {
+          position: relative;
+          margin-bottom: 16px;
+        }
+        .password-input {
+          width: 100%;
+          padding: 12px 44px 12px 16px;
+          border: 2px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          color: #fff;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          box-sizing: border-box;
+        }
+        .password-input:focus {
+          outline: none;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        .password-input.error {
+          border-color: #ef4444;
+          animation: shake 0.4s ease-in-out;
+        }
+        .password-toggle {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: #a0aec0;
+          cursor: pointer;
+          font-size: 1.2rem;
+          padding: 4px;
+        }
+        .password-toggle:hover {
+          color: #fff;
+        }
+        .password-error-msg {
+          color: #ef4444;
+          font-size: 0.8rem;
+          margin-top: -12px;
+          margin-bottom: 16px;
+          display: none;
+        }
+        .password-error-msg.show {
+          display: block;
+        }
+        .password-modal-buttons {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+        }
+        .password-btn {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          font-size: 0.9rem;
+        }
+        .password-btn-cancel {
+          background: rgba(255, 255, 255, 0.1);
+          color: #a0aec0;
+        }
+        .password-btn-cancel:hover {
+          background: rgba(255, 255, 255, 0.15);
+          color: #fff;
+        }
+        .password-btn-confirm {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          color: #fff;
+        }
+        .password-btn-confirm:hover {
+          background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+          transform: translateY(-1px);
+        }
+      </style>
+      <div class="password-modal-title">
+        🔐 Confirmación Requerida
+      </div>
+      <div class="password-modal-subtitle">
+        Para eliminar esta tarea, ingrese la contraseña de administrador.
+      </div>
+      <div class="password-input-container">
+        <input type="password" class="password-input" id="delete-password" placeholder="Ingrese la contraseña" autocomplete="off">
+        <button type="button" class="password-toggle" id="toggle-password">👁️</button>
+      </div>
+      <div class="password-error-msg" id="password-error">
+        ❌ Contraseña incorrecta. Intente nuevamente.
+      </div>
+      <div class="password-modal-buttons">
+        <button class="password-btn password-btn-cancel" id="cancel-delete">Cancelar</button>
+        <button class="password-btn password-btn-confirm" id="confirm-delete">Eliminar</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Referencias a elementos
+    const passwordInput = modal.querySelector('#delete-password');
+    const toggleBtn = modal.querySelector('#toggle-password');
+    const cancelBtn = modal.querySelector('#cancel-delete');
+    const confirmBtn = modal.querySelector('#confirm-delete');
+    const errorMsg = modal.querySelector('#password-error');
+
+    // Focus en el input
+    setTimeout(() => passwordInput.focus(), 100);
+
+    // Toggle visibilidad de contraseña
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      toggleBtn.textContent = isPassword ? '🙈' : '👁️';
+    });
+
+    // Función para cerrar el modal
+    const cerrarModal = () => {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 200);
+    };
+
+    // Cancelar
+    cancelBtn.addEventListener('click', () => {
+      cerrarModal();
+      resolve(false);
+    });
+
+    // Click fuera del modal para cancelar
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        cerrarModal();
+        resolve(false);
+      }
+    });
+
+    // Confirmar eliminación
+    const verificarContrasena = () => {
+      const PASSWORD_CORRECTA = 'controltotal';
+      const inputValue = passwordInput.value;
+
+      if (inputValue === PASSWORD_CORRECTA) {
+        cerrarModal();
+        resolve(true);
+      } else {
+        passwordInput.classList.add('error');
+        errorMsg.classList.add('show');
+        passwordInput.value = '';
+        passwordInput.focus();
+
+        // Remover clase de error después de la animación
+        setTimeout(() => {
+          passwordInput.classList.remove('error');
+        }, 400);
+      }
+    };
+
+    confirmBtn.addEventListener('click', verificarContrasena);
+
+    // Enter para confirmar
+    passwordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        verificarContrasena();
+      } else if (e.key === 'Escape') {
+        cerrarModal();
+        resolve(false);
+      }
+    });
+  });
 }
 
 /**
