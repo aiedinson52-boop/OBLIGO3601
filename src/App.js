@@ -15,6 +15,7 @@ import { inicializarAlertas } from './services/AlertService.js';
 import { inicializarGemini, extraerTareaConGemini, generarResumenDia } from './services/GeminiService.js';
 import { hablar, identificarComando, extraerInfoTarea } from './services/VoiceService.js';
 import { onAuthChange, logout, getCurrentUser } from './services/AuthService.js';
+import { verificarTrial } from './services/TrialService.js';
 
 import { crearTarea, validarTarea, PRIORIDADES, CONTEXTOS } from './models/Task.js';
 
@@ -26,7 +27,8 @@ const appState = {
     geminiEnabled: false,
     selectedDate: null,
     procesandoVoz: false,
-    currentUser: null
+    currentUser: null,
+    trialStatus: null
 };
 
 /**
@@ -92,10 +94,45 @@ async function iniciarInterfazPrincipal(user) {
         })
     ]);
 
-    inicializarBotonVoz(document.getElementById('voice-container'), {
-        onTranscript: manejarTranscripcion,
-        solicitarPermiso: false
-    });
+    // Verificar trial antes de inicializar voz
+    const trialResult = await verificarTrial(user.email, user.uid);
+    appState.trialStatus = trialResult;
+
+    const voiceContainer = document.getElementById('voice-container');
+    const trialBanner = document.getElementById('trial-banner');
+
+    if (trialResult.activo) {
+        // Trial activo: habilitar voz y mostrar banner
+        inicializarBotonVoz(voiceContainer, {
+            onTranscript: manejarTranscripcion,
+            solicitarPermiso: false
+        });
+        if (trialBanner) {
+            trialBanner.innerHTML = `
+                <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); text-align: center; font-size: var(--font-size-sm); font-weight: 500;">
+                    🎁 Periodo de prueba: <strong>${trialResult.diasRestantes} día${trialResult.diasRestantes !== 1 ? 's' : ''} restante${trialResult.diasRestantes !== 1 ? 's' : ''}</strong>
+                </div>
+            `;
+        }
+    } else {
+        // Sin acceso: mostrar mensaje
+        const mensaje = trialResult.motivo === 'expirado'
+            ? '⏰ Su periodo de prueba ha expirado. Contacte al administrador para continuar usando el control por voz.'
+            : '🔒 El control por voz no está disponible para su cuenta.';
+        voiceContainer.innerHTML = `
+            <div style="text-align: center; padding: var(--space-6); color: var(--color-gray-500);">
+                <p style="font-size: var(--font-size-lg); margin-bottom: var(--space-2);">${trialResult.motivo === 'expirado' ? '⏰' : '🔒'}</p>
+                <p style="font-size: var(--font-size-sm);">${mensaje}</p>
+            </div>
+        `;
+        if (trialBanner) {
+            trialBanner.innerHTML = trialResult.motivo === 'expirado' ? `
+                <div style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); text-align: center; font-size: var(--font-size-sm); font-weight: 500;">
+                    ⏰ Periodo de prueba expirado
+                </div>
+            ` : '';
+        }
+    }
 
     inicializarConfirmacion(document.getElementById('app'));
 
@@ -156,6 +193,7 @@ function renderizarEstructura(user) {
           <div class="card-header">
             <h3 class="card-title">🎤 Control por Voz</h3>
           </div>
+          <div id="trial-banner" style="margin-bottom: var(--space-3);"></div>
           <div id="voice-container"></div>
           
           <div id="ai-response" class="day-summary hidden" style="margin-top: var(--space-4);">
