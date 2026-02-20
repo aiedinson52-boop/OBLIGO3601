@@ -36,6 +36,23 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
+
+            /* Ocultar Vercel Toolbar en producción */
+            #vercel-toolbar,
+            .vercel-toolbar,
+            vercel-live-feedback,
+            [data-vercel-toolbar] {
+                display: none !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                z-index: -9999 !important;
+                height: 0 !important;
+                width: 0 !important;
+                overflow: hidden !important;
+                position: absolute !important;
+            }
+
             --color-primary-50: #eef2ff;
             --color-primary-100: #e0e7ff;
             --color-primary-200: #c7d2fe;
@@ -80,7 +97,12 @@
             --dark-border: #475569;
             --dark-text: #f1f5f9;
             --dark-text-muted: #94a3b8;
-            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-family: 'Inter',
+            -apple-system,
+            BlinkMacSystemFont,
+            'Segoe UI',
+            Roboto,
+            sans-serif;
             --font-size-xs: 0.75rem;
             --font-size-sm: 0.875rem;
             --font-size-base: 1rem;
@@ -109,9 +131,12 @@
             --radius-2xl: 1.5rem;
             --radius-full: 9999px;
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+            0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+            0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+            0 8px 10px -6px rgb(0 0 0 / 0.1);
             --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
             --glass-bg: rgba(255, 255, 255, 0.7);
             --glass-border: rgba(255, 255, 255, 0.3);
@@ -340,15 +365,39 @@
             cursor: pointer;
             transition: all var(--transition-spring);
             position: relative;
-            overflow: hidden;
+            z-index: 10;
         }
 
         .voice-btn.listening {
-            animation: pulse 1.5s ease-in-out infinite;
-            box-shadow: var(--shadow-xl), 0 0 60px rgba(99, 102, 241, 0.6);
+            animation: pulse-core 1.5s ease-in-out infinite;
+            box-shadow: var(--shadow-xl), 0 0 30px rgba(99, 102, 241, 0.6);
         }
 
-        @keyframes pulse {
+        /* Animación de ondas (Ripples) para indicar grabación */
+        .voice-btn.listening::before,
+        .voice-btn.listening::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: var(--color-primary-400);
+            opacity: 0.6;
+            z-index: -1;
+        }
+
+        .voice-btn.listening::before {
+            animation: ripple-effect 2s infinite;
+        }
+
+        .voice-btn.listening::after {
+            animation: ripple-effect 2s infinite 1.0s;
+        }
+
+        @keyframes pulse-core {
 
             0%,
             100% {
@@ -357,6 +406,20 @@
 
             50% {
                 transform: scale(1.05);
+            }
+        }
+
+        @keyframes ripple-effect {
+            0% {
+                width: 100%;
+                height: 100%;
+                opacity: 0.6;
+            }
+
+            100% {
+                width: 300%;
+                height: 300%;
+                opacity: 0;
             }
         }
 
@@ -956,7 +1019,18 @@
                 firebaseApp = firebase.initializeApp(firebaseConfig);
                 auth = firebase.auth();
                 db = firebase.firestore();
-                console.log('✅ Firebase inicializado correctamente');
+
+                // Habilitar persistencia offline
+                db.enablePersistence()
+                    .catch((err) => {
+                        if (err.code == 'failed-precondition') {
+                            console.warn('Persistencia fallida: Múltiples pestañas abiertas.');
+                        } else if (err.code == 'unimplemented') {
+                            console.warn('Persistencia no soportada por el navegador.');
+                        }
+                    });
+
+                console.log('✅ Firebase inicializado correctamente con persistencia');
             } catch (error) {
                 console.error('❌ Error inicializando Firebase:', error);
             }
@@ -987,7 +1061,7 @@
                 });
 
                 // Crear documento de usuario en Firestore
-                await db.collection('usuarios').doc(userCredential.user.uid).set({
+                await db.collection('users').doc(userCredential.user.uid).set({
                     nombre: nombre,
                     email: email,
                     fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
@@ -1073,10 +1147,9 @@
 
             console.log('📡 Iniciando sincronización de tareas en tiempo real...');
 
-            unsubscribeTareas = db.collection('usuarios')
+            unsubscribeTareas = db.collection('users')
                 .doc(currentUser.uid)
-                .collection('tareas')
-                .orderBy('creadaEn', 'desc')
+                .collection('tasks')
                 .onSnapshot((snapshot) => {
                     const tareas = [];
                     snapshot.forEach(doc => {
@@ -1085,6 +1158,7 @@
                     });
 
                     appState.tareas = tareas;
+                    guardarTareas(); // Respaldo local
                     console.log(`🔄 Sincronización: ${tareas.length} tareas actualizadas`);
 
                     renderizarCalendario();
@@ -1092,7 +1166,12 @@
                     if (window.checkAlarms) checkAlarms();
                 }, (error) => {
                     console.error('❌ Error en sincronización de tareas:', error);
-                    mostrarToast('Error de sincronización', 'error');
+                    // Solo mostrar error si no tenemos datos locales de respaldo
+                    if (appState.tareas.length === 0) {
+                        cargarTareas(); // Intentar cargar desde respaldo local
+                        renderizarCalendario();
+                        renderizarListaTareas();
+                    }
                 });
         }
 
@@ -1115,53 +1194,205 @@
         /**
          * Agrega una nueva tarea a Firestore
          */
-        async function agregarTarea(tarea) {
-            if (!currentUser) {
-                mostrarToast('Debe iniciar sesión para guardar tareas', 'warning');
-                return;
-            }
+        /**
+         * Traduce un código de error de Firestore a un mensaje amigable en español
+         */
+        function traducirErrorFirestore(error) {
+            const mensajes = {
+                'permission-denied': 'No tiene permisos para guardar. Verifique su sesión.',
+                'unavailable': 'Servicio no disponible. Guardado localmente.',
+                'deadline-exceeded': 'Tiempo de espera agotado. Guardado localmente.',
+                'resource-exhausted': 'Cuota de Firestore agotada. Guardado localmente.',
+                'unauthenticated': 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+                'not-found': 'Colección no encontrada. Contacte soporte.',
+                'already-exists': 'La tarea ya existe.',
+                'cancelled': 'Operación cancelada. Intente de nuevo.',
+                'data-loss': 'Error de datos. Guardado localmente.',
+                'internal': 'Error interno del servidor. Guardado localmente.',
+                'failed-precondition': 'Condición previa fallida. Guardado localmente.'
+            };
+            return mensajes[error.code] || `Error inesperado (${error.code || 'desconocido'}). Guardado localmente.`;
+        }
 
+        /**
+         * Guarda tareas pendientes de sincronización en localStorage
+         */
+        function guardarTareaPendienteSync(tareaData) {
             try {
-                const nuevaTarea = {
-                    titulo: tarea.titulo || 'Sin título',
-                    fecha: tarea.fecha || new Date().toISOString().split('T')[0],
-                    hora: tarea.hora || '09:00',
-                    contexto: tarea.contexto || 'personal',
-                    prioridad: tarea.prioridad || 'media',
-                    estado: tarea.estado || 'Pendiente',
-                    creadaEn: firebase.firestore.FieldValue.serverTimestamp(),
-                    email: currentUser.email
-                };
-
-                await db.collection('usuarios')
-                    .doc(currentUser.uid)
-                    .collection('tareas')
-                    .add(nuevaTarea);
-
-                console.log('✅ Tarea guardada en Firestore');
-                // No es necesario actualizar UI manualmente, onSnapshot lo hará
-            } catch (error) {
-                console.error('Error guardando tarea:', error);
-                mostrarToast('Error al guardar la tarea', 'error');
+                const key = 'pendingTasks_' + (currentUser ? currentUser.uid : 'anon');
+                const pending = JSON.parse(localStorage.getItem(key) || '[]');
+                pending.push({ ...tareaData, _pendingSince: new Date().toISOString() });
+                localStorage.setItem(key, JSON.stringify(pending));
+                console.log('[SAVE] 💾 Tarea agregada a cola de sincronización pendiente. Total:', pending.length);
+            } catch (e) {
+                console.error('[SAVE] ❌ Error guardando en cola pendiente:', e);
             }
+        }
+
+        /**
+         * Sincroniza tareas pendientes almacenadas en localStorage con Firestore
+         */
+        async function sincronizarTareasPendientes() {
+            if (!currentUser || !db) return;
+
+            const key = 'pendingTasks_' + currentUser.uid;
+            const pending = JSON.parse(localStorage.getItem(key) || '[]');
+            if (pending.length === 0) return;
+
+            console.log(`[SAVE] 🔄 Intentando sincronizar ${pending.length} tareas pendientes...`);
+            const still_pending = [];
+
+            for (const tareaData of pending) {
+                try {
+                    // No usar serverTimestamp para tareas pendientes, usar la fecha original
+                    await db.collection('users')
+                        .doc(currentUser.uid)
+                        .collection('tasks')
+                        .add(tareaData);
+                    console.log('[SAVE] ✅ Tarea pendiente sincronizada:', tareaData.titulo);
+                } catch (error) {
+                    console.error('[SAVE] ❌ Fallo al sincronizar tarea pendiente:', error.code, error.message);
+                    still_pending.push(tareaData);
+                }
+            }
+
+            localStorage.setItem(key, JSON.stringify(still_pending));
+            if (still_pending.length === 0) {
+                console.log('[SAVE] ✅ Todas las tareas pendientes sincronizadas');
+                mostrarToast('✅ Tareas pendientes sincronizadas correctamente', 'success');
+            } else {
+                console.log(`[SAVE] ⚠️ ${still_pending.length} tareas aún pendientes de sincronización`);
+            }
+        }
+
+        /**
+         * Agrega una nueva tarea con reintentos, fallback y logging detallado
+         */
+        async function agregarTarea(tarea) {
+            console.log('[SAVE] ▶ Iniciando guardado de tarea:', tarea.titulo || '(sin título)');
+
+            // Paso 1: Verificar autenticación
+            if (!currentUser) {
+                console.error('[SAVE] ❌ FALLO: Usuario no autenticado');
+                mostrarToast('Debe iniciar sesión para guardar tareas', 'warning');
+                return false;
+            }
+            console.log('[SAVE] ✓ Usuario autenticado:', currentUser.email, '| UID:', currentUser.uid);
+
+            // Paso 2: Verificar conexión a Firestore
+            if (!db) {
+                console.error('[SAVE] ❌ FALLO: Firestore no inicializado');
+                mostrarToast('Error de configuración. Recargue la página.', 'error');
+                return false;
+            }
+            console.log('[SAVE] ✓ Firestore disponible');
+
+            // Paso 3: Construir objeto de tarea
+            const fechaActualCO = obtenerHoraColombiana();
+            const fechaStr = tarea.fecha || fechaActualCO.toLocaleDateString('en-CA');
+
+            const nuevaTarea = {
+                titulo: tarea.titulo || 'Sin título',
+                fecha: fechaStr,
+                hora: tarea.hora || '09:00',
+                contexto: tarea.contexto || 'personal',
+                prioridad: tarea.prioridad || 'media',
+                estado: tarea.estado || 'Pendiente',
+                creadaEn: new Date().toISOString(),
+                email: currentUser.email
+            };
+            console.log('[SAVE] ✓ Tarea construida:', JSON.stringify(nuevaTarea));
+
+            // Paso 4: Agregar a estado local inmediatamente (Optimistic UI)
+            const tempId = tarea.id || 'temp_' + Date.now();
+            const tareaLocal = { ...nuevaTarea, id: tempId };
+
+            appState.tareas.push(tareaLocal);
+            guardarTareas();
+            renderizarCalendario();
+            renderizarListaTareas();
+            if (typeof renderizarTareasPendientes === 'function') renderizarTareasPendientes();
+            console.log('[SAVE] ✓ Tarea agregada al estado local con ID temporal:', tempId);
+
+            // Paso 5: Intentar guardar en Firestore con reintentos
+            const MAX_RETRIES = 3;
+            const BACKOFF_MS = [500, 1000, 2000];
+
+            for (let intento = 1; intento <= MAX_RETRIES; intento++) {
+                try {
+                    console.log(`[SAVE] 🔄 Intento ${intento}/${MAX_RETRIES} - Guardando en Firestore...`);
+
+                    await db.collection('users')
+                        .doc(currentUser.uid)
+                        .collection('tasks')
+                        .add(nuevaTarea);
+
+                    console.log(`[SAVE] ✅ ÉXITO en intento ${intento}: Tarea guardada en Firestore`);
+                    return true;
+
+                } catch (error) {
+                    console.error(`[SAVE] ❌ Intento ${intento}/${MAX_RETRIES} falló:`, error.code || 'unknown', error.message);
+
+                    // Errores permanentes: no reintentar
+                    if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                        console.error('[SAVE] 🚫 Error permanente - no se reintentará');
+                        const msg = traducirErrorFirestore(error);
+                        mostrarToast(msg, 'error');
+
+                        // Revertir del estado local
+                        appState.tareas = appState.tareas.filter(t => t.id !== tempId);
+                        guardarTareas();
+                        renderizarListaTareas();
+                        if (typeof renderizarTareasPendientes === 'function') renderizarTareasPendientes();
+                        return false;
+                    }
+
+                    // Errores transitorios: esperar y reintentar
+                    if (intento < MAX_RETRIES) {
+                        const delay = BACKOFF_MS[intento - 1] || 2000;
+                        console.log(`[SAVE] ⏳ Esperando ${delay}ms antes del siguiente intento...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+
+            // Paso 6: Todos los reintentos fallaron - guardar en cola pendiente
+            console.warn('[SAVE] ⚠️ Todos los reintentos fallaron. Usando fallback localStorage.');
+
+            // Marcar como pendiente de sincronización
+            const idx = appState.tareas.findIndex(t => t.id === tempId);
+            if (idx > -1) {
+                appState.tareas[idx]._syncPending = true;
+            }
+            guardarTareas();
+            renderizarListaTareas();
+            if (typeof renderizarTareasPendientes === 'function') renderizarTareasPendientes();
+
+            // Guardar en cola pendiente para sincronización posterior
+            guardarTareaPendienteSync(nuevaTarea);
+
+            mostrarToast('⚠️ Tarea guardada localmente. Se sincronizará cuando se restablezca la conexión.', 'warning');
+            return true; // Retornamos true porque la tarea está guardada localmente
         }
 
         /**
          * Actualiza una tarea existente en Firestore
          */
         async function actualizarTarea(id, cambios) {
-            if (!currentUser || !id) return;
+            if (!currentUser || !id) return false;
 
             try {
-                await db.collection('usuarios')
+                await db.collection('users')
                     .doc(currentUser.uid)
-                    .collection('tareas')
+                    .collection('tasks')
                     .doc(id)
                     .update(cambios);
                 console.log(`✅ Tarea actualizada: ${id}`);
+                return true;
             } catch (error) {
                 console.error('Error actualizando tarea:', error);
-                mostrarToast('Error al actualizar la tarea', 'error');
+                // No mostrar toast aquí para permitir que el llamador maneje el UI
+                return false;
             }
         }
 
@@ -1169,24 +1400,77 @@
          * Elimina una tarea de Firestore
          */
         async function eliminarTareaById(id) {
-            if (!currentUser || !id) return;
+            if (!currentUser || !id) return false;
 
             try {
-                await db.collection('usuarios')
+                await db.collection('users')
                     .doc(currentUser.uid)
-                    .collection('tareas')
+                    .collection('tasks')
                     .doc(id)
                     .delete();
                 console.log(`🗑️ Tarea eliminada: ${id}`);
+                return true;
             } catch (error) {
                 console.error('Error eliminando tarea:', error);
-                mostrarToast('Error al eliminar la tarea', 'error');
+                return false;
             }
         }
 
         /**
          * Migra tareas locales a Firestore (primera vez)
          */
+        /**
+         * Migra tareas de la colección vieja 'usuarios/{uid}/tareas' a 'users/{uid}/tasks'
+         */
+        async function migrarTareasDesdeColeccionVieja() {
+            if (!db || !currentUser) return;
+
+            try {
+                const viejasRef = db.collection('usuarios')
+                    .doc(currentUser.uid)
+                    .collection('tareas');
+
+                const snapshot = await viejasRef.get();
+
+                if (snapshot.empty) {
+                    console.log('ℹ️ No hay tareas en la colección vieja para migrar');
+                    return;
+                }
+
+                console.log(`🔄 Migrando ${snapshot.size} tareas de colección vieja...`);
+
+                const nuevasRef = db.collection('users')
+                    .doc(currentUser.uid)
+                    .collection('tasks');
+
+                const batch = db.batch();
+                let migradas = 0;
+
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    // Verificar si ya existe en la nueva colección
+                    const existeRef = nuevasRef.doc(doc.id);
+                    const existe = await existeRef.get();
+
+                    if (!existe.exists) {
+                        batch.set(existeRef, data);
+                        migradas++;
+                    }
+                }
+
+                if (migradas > 0) {
+                    await batch.commit();
+                    console.log(`✅ ${migradas} tareas migradas exitosamente`);
+                    mostrarToast(`${migradas} tareas históricas recuperadas`, 'success');
+                } else {
+                    console.log('ℹ️ Todas las tareas ya estaban migradas');
+                }
+            } catch (error) {
+                console.error('⚠️ Error migrando tareas viejas:', error);
+                // No bloquear la app si falla la migración
+            }
+        }
+
         async function migrarTareasLocales() {
             if (!db || !currentUser) return;
 
@@ -1214,7 +1498,7 @@
                 <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-4);">
                     <div style="background: var(--glass-bg); backdrop-filter: var(--glass-blur); border-radius: var(--radius-2xl); border: 1px solid var(--glass-border); box-shadow: var(--shadow-xl); padding: var(--space-8); max-width: 420px; width: 100%;">
                         <div style="text-align: center; margin-bottom: var(--space-6);">
-                            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 60px; margin-bottom: var(--space-4);">
+                            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 60px; margin-bottom: var(--space-4); background: rgba(30, 41, 59, 0.95); padding: 8px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                             <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-400)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Bienvenido</h1>
                             <p style="color: var(--color-gray-500); font-size: var(--font-size-sm); margin-top: var(--space-2);">Tu asistente para cumplir sin estrés</p>
                         </div>
@@ -1480,7 +1764,7 @@
             if (!db || !currentUser) return null;
 
             try {
-                const doc = await db.collection('usuarios')
+                const doc = await db.collection('users')
                     .doc(currentUser.uid)
                     .get();
 
@@ -1504,7 +1788,7 @@
             if (!db || !currentUser) return false;
 
             try {
-                await db.collection('usuarios')
+                await db.collection('users')
                     .doc(currentUser.uid)
                     .set({ suscripcion }, { merge: true });
 
@@ -1523,15 +1807,20 @@
          */
         function verificarSuscripcion() {
             try {
+                // Verificar que el usuario esté autenticado en Firestore
+                if (!currentUser) return false;
+
                 // Usar cache de suscripción del usuario actual
                 if (!suscripcionCache) return false;
-                if (!suscripcionCache.activa || !suscripcionCache.fechaExpiracion) return false;
+                if (!suscripcionCache.activa || !suscripcionCache.fechaExpiracion || !suscripcionCache.fechaActivacion) return false;
 
                 // Usar hora sincronizada de Colombia
                 const ahora = obtenerHoraColombiana();
+                const activacion = new Date(suscripcionCache.fechaActivacion);
                 const expiracion = new Date(suscripcionCache.fechaExpiracion);
 
-                return ahora < expiracion;
+                // Validar que la fecha actual esté dentro del rango [activación, expiración)
+                return ahora >= activacion && ahora < expiracion;
             } catch (e) {
                 console.error('Error verificando suscripción:', e);
                 return false;
@@ -1851,7 +2140,7 @@
                 <div class="app-container" style="max-width: 1200px; margin: 0 auto; padding: 20px; font-family: 'Inter', sans-serif;">
                     <header class="app-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
                         <div class="logo-section" style="display: flex; align-items: center; gap: 15px;">
-                            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px;">
+                            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px; background: rgba(30, 41, 59, 0.95); padding: 6px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <div>
                                 <h1 style="margin: 0; font-size: 1.5rem; color: #1f2937;">Asistente Personal</h1>
                                 <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">${fechaString}</p>
@@ -2109,6 +2398,54 @@
         const tareasAlertadas = new Set(); // Evitar alertar la misma tarea múltiples veces
 
         /**
+         * Solicita permiso para notificaciones
+         */
+        async function solicitarPermisoNotificaciones() {
+            if (!("Notification" in window)) return false;
+
+            if (Notification.permission === "granted") return true;
+
+            if (Notification.permission !== "denied") {
+                const permission = await Notification.requestPermission();
+                return permission === "granted";
+            }
+            return false;
+        }
+
+        /**
+         * Envía notificación de sistema (Desktop/Mobile)
+         */
+        function enviarNotificacionSistema(tarea) {
+            if (!("Notification" in window)) return;
+
+            if (Notification.permission === "granted") {
+                const title = `🔔 ${tarea.titulo}`;
+                const options = {
+                    body: `Es hora de tu tarea: ${tarea.titulo} (${tarea.hora})`,
+                    icon: '/icons/icon.svg',
+                    badge: '/icons/icon.svg',
+                    tag: 'tarea-' + tarea.id,
+                    vibrate: [200, 100, 200],
+                    requireInteraction: true,
+                    data: { url: '/', id: tarea.id }
+                };
+
+                // Usar SW si está disponible (Soporte background mejorado)
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.showNotification(title, options);
+                    });
+                } else {
+                    try {
+                        new Notification(title, options);
+                    } catch (e) {
+                        console.log('Error notificación normal:', e);
+                    }
+                }
+            }
+        }
+
+        /**
          * Genera un sonido de alarma usando Web Audio API
          */
         function reproducirAlarma() {
@@ -2153,6 +2490,9 @@
          */
         function mostrarAlarma(tarea) {
             alarmaActiva = true;
+
+            // Enviar notificación de sistema
+            enviarNotificacionSistema(tarea);
 
             // Crear overlay de alarma
             const alarmaOverlay = document.createElement('div');
@@ -2288,6 +2628,7 @@
                 }
                 tarea.hora = `${nuevaHora.toString().padStart(2, '0')}:${nuevoMin.toString().padStart(2, '0')}`;
                 guardarTareas();
+                actualizarTarea(tarea.id, { hora: tarea.hora });
                 renderizarListaTareas();
             }
 
@@ -2328,6 +2669,7 @@
                 tarea.hora = `${fechaTarea.getHours().toString().padStart(2, '0')}:${fechaTarea.getMinutes().toString().padStart(2, '0')}`;
 
                 guardarTareas();
+                actualizarTarea(tarea.id, { fecha: tarea.fecha, hora: tarea.hora });
                 renderizarListaTareas();
             }
 
@@ -2404,7 +2746,7 @@
             app.innerHTML = `
     <header class="app-header">
       <div style="display: flex; align-items: center; gap: var(--space-3);">
-        <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px; width: auto;">
+        <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px; width: auto; background: rgba(30, 41, 59, 0.95); padding: 6px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div id="subscription-container" style="display: flex; align-items: center; gap: var(--space-2);">
           <button class="btn" id="btn-pagar" onclick="abrirPago()"
              style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: var(--font-size-sm); padding: var(--space-2) var(--space-4); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4); border: none; cursor: pointer;">
@@ -2540,6 +2882,9 @@
             if (horaEl) {
                 horaEl.textContent = `${horas}:${minutos}:${segundos} ${periodo}`;
             }
+
+            // Verificar alarmas cada segundo para precisión exacta
+            verificarAlarmas();
 
             // Verificar si es necesario re-sincronizar (cada 5 minutos)
             verificarResincronizacion();
@@ -2785,7 +3130,7 @@
               <span class="status-indicator pendiente">${t.estado}</span>
             </div>
             <div class="task-meta" style="margin-top: var(--space-2);">
-              <span class="task-badge">📅 ${formatearFechaCorta(new Date(t.fecha))}</span>
+              <span class="task-badge">📅 ${t.fecha.split('-').reverse().join('/')}</span>
               <span class="task-badge">🕐 ${formatearHora12(t.hora)}</span>
             </div>
             <div style="margin-top: var(--space-3); display: flex; gap: var(--space-2); flex-wrap: wrap;">
@@ -2846,6 +3191,9 @@
                 }
 
                 // Primera vez o estado 'prompt' - solicitar permiso
+                // Aprovechar gesto de usuario para pedir también notificaciones
+                solicitarPermisoNotificaciones().catch(e => console.log('Error pidiendo notificaciones:', e));
+
                 audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 microphoneInitialized = true;
 
@@ -3310,7 +3658,7 @@
                 dialog.classList.remove('active');
                 hablar('Por favor, diga nuevamente la tarea.');
             };
-            document.getElementById('btn-confirm').onclick = () => {
+            document.getElementById('btn-confirm').onclick = async () => {
                 const tarea = {
                     id: generarId(),
                     titulo: info.titulo,
@@ -3321,12 +3669,15 @@
                     estado: 'Pendiente',
                     creadaEn: new Date().toISOString()
                 };
-                agregarTarea(tarea);
                 dialog.classList.remove('active');
-                renderizarCalendario();
-                renderizarListaTareas();
-                mostrarToast('Tarea guardada correctamente', 'success');
-                hablar('Tarea guardada correctamente.');
+                const guardado = await agregarTarea(tarea);
+                if (guardado) {
+                    mostrarToast('✅ Tarea guardada correctamente', 'success');
+                    hablar('Tarea guardada correctamente.');
+                } else {
+                    mostrarToast('⚠️ Error al guardar la tarea. Intente de nuevo.', 'error');
+                    hablar('Hubo un error al guardar la tarea.');
+                }
             };
 
             hablar(`He entendido: ${info.titulo}. ¿Desea confirmarla?`);
@@ -3393,11 +3744,29 @@
             // Mostrar modal de contraseña para confirmar eliminación
             const passwordCorrect = await mostrarDialogoContrasenaEliminar();
             if (passwordCorrect) {
-                eliminarTareaById(id);
-                renderizarListaTareas();
-                renderizarListaCumplidas();
-                renderizarCalendario();
-                mostrarToast('Tarea eliminada', 'warning');
+                // Optimistic UI: Eliminar visualmente primero
+                const tareaIndex = appState.tareas.findIndex(t => t.id === id);
+                const tareaBackup = appState.tareas[tareaIndex];
+
+                if (tareaIndex > -1) {
+                    appState.tareas.splice(tareaIndex, 1);
+                    renderizarListaTareas();
+                    renderizarListaCumplidas();
+                    renderizarCalendario();
+                }
+
+                const exito = await eliminarTareaById(id);
+
+                if (exito) {
+                    mostrarToast('Tarea eliminada correctamente', 'success');
+                } else {
+                    // Revertir si falló
+                    if (tareaBackup) {
+                        appState.tareas.push(tareaBackup);
+                        renderizarListaTareas();
+                    }
+                    mostrarToast('Error al eliminar la tarea', 'error');
+                }
             }
         };
 
@@ -3654,7 +4023,7 @@
         /**
          * Guarda los cambios realizados en el modal de edición
          */
-        window.guardarEdicionTarea = function () {
+        window.guardarEdicionTarea = async function () {
             const id = document.getElementById('edit-tarea-id').value;
             const titulo = document.getElementById('edit-titulo').value.trim();
             const fecha = document.getElementById('edit-fecha').value;
@@ -3680,21 +4049,46 @@
                 return;
             }
 
+            // Mostrar estado de carga (opcionalmente deshabilitar botón)
+            const btnGuardar = document.querySelector('#confirmation-dialog .btn-success');
+            const txtOriginal = btnGuardar ? btnGuardar.innerText : 'Guardar';
+            if (btnGuardar) {
+                btnGuardar.innerText = 'Guardando...';
+                btnGuardar.disabled = true;
+            }
+
             // Actualizar la tarea
-            actualizarTarea(id, {
+            const exito = await actualizarTarea(id, {
                 titulo: titulo,
                 fecha: fecha,
                 hora: hora,
-                prioridad: prioridad
+                prioridad: prioridad,
+                estado: 'Pendiente' // Reactivar tarea al editar
             });
 
-            // Cerrar modal y actualizar UI
-            cerrarModalEdicion();
-            renderizarListaTareas();
-            renderizarListaCumplidas();
-            renderizarCalendario();
+            if (btnGuardar) {
+                btnGuardar.innerText = txtOriginal;
+                btnGuardar.disabled = false;
+            }
 
-            mostrarToast('Tarea modificada correctamente', 'success');
+            if (exito) {
+                // Reactivar notificación: eliminar de la lista de tareas ya alertadas
+                if (tareasAlertadas.has(id)) {
+                    tareasAlertadas.delete(id);
+                    localStorage.setItem('tareasAlertadas', JSON.stringify(Array.from(tareasAlertadas)));
+                    console.log('Notificación reprogramada para la tarea modificada');
+                }
+
+                // Cerrar modal y actualizar UI
+                cerrarModalEdicion();
+                // onSnapshot se encargará del renderizado final, pero podemos forzar uno local si quisiéramos
+                // Como actualizarTarea no devuelve la tarea actualizada, esperamos a onSnapshot o 
+                // confiamos en que onSnapshot llegará rápido.
+
+                mostrarToast('Tarea modificada correctamente', 'success');
+            } else {
+                mostrarToast('Hubo un error al guardar los cambios', 'error');
+            }
         };
 
         /**
@@ -3856,7 +4250,7 @@
             // ============================================================================
 
             if (auth) {
-                // Configurar observer de autenticación
+                // Usar Firebase Auth compat (cargado vía CDN)
                 auth.onAuthStateChanged(async (user) => {
                     if (user) {
                         // Usuario autenticado
@@ -3865,6 +4259,13 @@
 
                         // Iniciar sincronización en tiempo real
                         iniciarListenerTareas();
+
+                        // Intentar sincronizar tareas pendientes guardadas offline
+                        // Esto asegura que si hubo fallos previos, se reintente al reconectar/reloguear
+                        await sincronizarTareasPendientes();
+
+                        // Migrar tareas de colección vieja (usuarios → users)
+                        await migrarTareasDesdeColeccionVieja();
 
                         // Cargar suscripción del usuario desde Firestore
                         await cargarSuscripcionFirestore();
@@ -3935,7 +4336,9 @@
             // Iniciar sistema de alarmas
             cargarTareasAlertadas();
             verificarAlarmas();
-            setInterval(verificarAlarmas, 30000);
+            // Verificar alarma inicial
+            verificarAlarmas();
+            // Intervalo eliminado: se verifica cada segundo en actualizarReloj()
 
             console.log('%c🎙️ Asistente de Voz Colombiano', 'font-size: 20px; color: #6366f1; font-weight: bold;');
             console.log('Zona horaria: America/Bogota (UTC-5)');
@@ -3958,6 +4361,30 @@
                     });
             });
         }
+    </script>
+    <script>
+        // Bloquear Vercel Toolbar y Feedback en producción
+        (function () {
+            const clean = () => {
+                try {
+                    const selector = 'vercel-live-feedback, #vercel-toolbar, .vercel-toolbar, [data-vercel-toolbar]';
+                    const els = document.querySelectorAll(selector);
+                    if (els.length > 0) {
+                        els.forEach(el => el.remove());
+                        console.log('Blocked Vercel Toolbar');
+                    }
+                } catch (e) { }
+            };
+
+            // Ejecutar inmediatamente
+            clean();
+
+            // Observar cambios en el DOM para eliminar si se inyecta
+            const obs = new MutationObserver(clean);
+            obs.observe(document.documentElement, { childList: true, subtree: true });
+
+            window.addEventListener('load', clean);
+        })();
     </script>
 </body>
 

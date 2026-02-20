@@ -6,9 +6,12 @@ let containerElement = null;
 let tareasCumplidas = [];
 let onTaskUpdateCallback = null;
 
+let currentUserId = null;
+
 export async function inicializarCompletedTaskList(container, opciones = {}) {
     containerElement = container;
     onTaskUpdateCallback = opciones.onUpdate || null;
+    currentUserId = opciones.userId || null;
     await cargarTareasCumplidas();
     renderizarListaCumplidas();
 }
@@ -16,7 +19,7 @@ export async function inicializarCompletedTaskList(container, opciones = {}) {
 async function cargarTareasCumplidas() {
     try {
         // CAMBIO CRITICO: Solo obtener cumplidas
-        tareasCumplidas = await obtenerTareasCumplidas();
+        tareasCumplidas = await obtenerTareasCumplidas(currentUserId);
     } catch (error) {
         console.error('Error cargando tareas cumplidas:', error);
         tareasCumplidas = [];

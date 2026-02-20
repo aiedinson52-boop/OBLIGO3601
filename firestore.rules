@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Colección: users (nueva - principal)
+    match /users/{userId} {
+      // Funciones auxiliares
+      function isAdmin() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      function isOwnerOrAdmin() {
+        return request.auth != null && (request.auth.uid == userId || isAdmin());
+      }
+
+      allow read: if request.auth != null;
+      allow create, update: if isOwnerOrAdmin();
+
+      match /tasks/{taskId} {
+        allow read, write: if isOwnerOrAdmin();
+      }
+    }
+
+    // Colección: usuarios (vieja - para migración)
+    match /usuarios/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      match /tareas/{tareaId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Colección: trials
+    match /trials/{trialId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

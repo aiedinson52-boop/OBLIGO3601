@@ -10,14 +10,16 @@ import { inicializarBotonVoz, limpiarTranscript, setTranscript } from './compone
 import { inicializarConfirmacion, mostrarConfirmacion } from './components/TaskForm.js';
 import { renderLogin } from './components/Login.js';
 
-import { inicializarDB, guardarTarea, obtenerTareasPorFecha } from './services/TaskStorage.js';
-import { inicializarAlertas } from './services/AlertService.js';
+import { inicializarDB, guardarTarea, obtenerTareasPorFecha, obtenerTareasPendientes } from './services/TaskStorage.js';
+import { inicializarAlertas, desbloquearAudioParaSafari, verificarAlertasDeOtroUsuario } from './services/AlertService.js';
 import { inicializarGemini, extraerTareaConGemini, generarResumenDia } from './services/GeminiService.js';
 import { hablar, identificarComando, extraerInfoTarea } from './services/VoiceService.js';
 import { onAuthChange, logout, getCurrentUser } from './services/AuthService.js';
 import { verificarTrial } from './services/TrialService.js';
 
 import { crearTarea, validarTarea, PRIORIDADES, CONTEXTOS } from './models/Task.js';
+import { checkAndPromoteFirstUser, ROLES } from './services/UserService.js';
+import { renderAdminPanel, renderOperatorPanel } from './components/AdminPanel.js';
 
 /**
  * Estado global de la aplicación
@@ -28,6 +30,8 @@ const appState = {
     selectedDate: null,
     procesandoVoz: false,
     currentUser: null,
+    userRole: null, // 'admin' | 'operator'
+    viewingUserId: null, // null = ver propias
     trialStatus: null
 };
 
@@ -40,10 +44,21 @@ export async function inicializarApp() {
         await inicializarDB();
 
         // Escuchar cambios de autenticación
-        onAuthChange((user) => {
+        // Escuchar cambios de autenticación
+        onAuthChange(async (user) => {
             appState.currentUser = user;
             if (user) {
                 console.log("Usuario autenticado:", user.email);
+                // Verificar/Asignar rol
+                try {
+                    const role = await checkAndPromoteFirstUser(user);
+                    appState.userRole = role;
+                    console.log("Rol asignado:", role);
+                } catch (error) {
+                    console.error("Error obteniendo rol:", error);
+                    appState.userRole = ROLES.OPERATOR; // Fallback seguro
+                }
+
                 iniciarInterfazPrincipal(user);
             } else {
                 console.log("No hay usuario autenticado.");
@@ -84,15 +99,38 @@ async function iniciarInterfazPrincipal(user) {
     // Inicializar componentes
     await Promise.all([
         inicializarCalendario(document.getElementById('calendar-container'), {
-            onDateSelect: manejarSeleccionFecha
+            onDateSelect: manejarSeleccionFecha,
+            userId: appState.viewingUserId
         }),
         inicializarListaTareas(document.getElementById('task-list-container'), {
-            onUpdate: manejarActualizacionTareas
+            onUpdate: manejarActualizacionTareas,
+            userId: appState.viewingUserId
         }),
         inicializarCompletedTaskList(document.getElementById('completed-tasks-container'), {
-            onUpdate: manejarActualizacionTareas
+            onUpdate: manejarActualizacionTareas,
+            userId: appState.viewingUserId
         })
     ]);
+
+    // Renderizar Panel según Rol
+    const sidebar = document.querySelector('.sidebar');
+    let panelContainer = document.getElementById('role-panel-container');
+    if (!panelContainer) {
+        panelContainer = document.createElement('div');
+        panelContainer.id = 'role-panel-container';
+        sidebar.insertBefore(panelContainer, sidebar.firstChild);
+    }
+
+    if (appState.userRole === ROLES.ADMIN) {
+        renderAdminPanel('role-panel-container', {
+            onSelectOperator: manejarSeleccionOperador
+        });
+    } else {
+        // Asumimos operador por defecto
+        renderOperatorPanel('role-panel-container', {
+            onSelectOperator: manejarSeleccionOperador
+        });
+    }
 
     // Verificar trial antes de inicializar voz
     const trialResult = await verificarTrial(user.email, user.uid);
@@ -155,8 +193,13 @@ function renderizarEstructura(user) {
     app.innerHTML = `
     <header class="app-header">
       <div class="header-left">
-        <h1 class="app-title">🎙️ Asistente de Voz</h1>
-        <p class="app-subtitle">Gestión de Tareas Colombia</p>
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px; background: rgba(30, 41, 59, 0.95); padding: 6px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div>
+                <h1 class="app-title" style="font-size: 1.2rem; margin: 0; line-height: 1.2;">Asistente</h1>
+                <p class="app-subtitle" style="font-size: 0.8rem; margin: 0; opacity: 0.8;">Gestión de Tareas</p>
+            </div>
+        </div>
       </div>
       <div class="header-right" style="display: flex; align-items: center; gap: var(--space-2);">
         <div style="font-size: var(--font-size-xs); color: var(--color-gray-600); text-align: right; display: none; @media(min-width: 600px){display: block;}">
@@ -271,6 +314,15 @@ function renderizarEstructura(user) {
  * Configura los eventos globales
  */
 function configurarEventosGlobales() {
+    // --- Desbloquear AudioContext para Safari/Apple al primer gesto ---
+    const desbloquearAudio = () => {
+        desbloquearAudioParaSafari();
+        document.removeEventListener('click', desbloquearAudio);
+        document.removeEventListener('touchstart', desbloquearAudio);
+    };
+    document.addEventListener('click', desbloquearAudio);
+    document.addEventListener('touchstart', desbloquearAudio);
+
     // Botón ir a hoy
     document.getElementById('btn-today').addEventListener('click', async () => {
         await irAHoy(document.getElementById('calendar-container'));
@@ -552,9 +604,17 @@ async function procesarNuevaTarea(texto) {
     mostrarConfirmacion(nuevaTarea, {
         onConfirm: async (tarea) => {
             try {
-                await guardarTarea(tarea);
-                await recargarCalendario(document.getElementById('calendar-container'));
-                await recargarListaTareas();
+                // Guardar tarea (asignando al usuario que se está viendo, si aplica)
+                await guardarTarea(tarea, appState.viewingUserId);
+
+                // Recargar componentes...
+                // Si estamos viendo a otro usuario, recargar SU calendario/lista
+                const userId = appState.viewingUserId;
+                await recargarCalendario(document.getElementById('calendar-container')); // Calendar ya tiene el userId inyectado en su estado? 
+                // Calendar.js tiene estadoCalendario.currentUserId, pero recargarCalendario llama a cargarDatosCalendario que usa ese estado.
+                // Así que solo llamarlo debería funcionar si el estado se mantiene.
+
+                await recargarListaTareas(); // TaskList.js similarmente tiene currentUserId en variable modulo.
                 await recargarCompletedTaskList();
 
                 await hablar('Tarea guardada correctamente.');
@@ -642,6 +702,70 @@ async function manejarActualizacionTareas() {
     await recargarCalendario(document.getElementById('calendar-container'));
     await recargarListaTareas();
     await recargarCompletedTaskList();
+}
+
+/**
+ * Maneja la selección de un operador para ver sus tareas
+ */
+async function manejarSeleccionOperador(operator) {
+    if (operator) {
+        // operator es { id, displayName, ... }
+        appState.viewingUserId = operator.id;
+        console.log(`Viendo tareas de: ${operator.displayName}`);
+        mostrarNotificacion(`Viendo tareas de: ${operator.displayName}`, 'info');
+
+        // Cross-operator notification: verificar alertas próximas del operador seleccionado
+        try {
+            const alertasProximas = await verificarAlertasDeOtroUsuario(operator.id);
+            if (alertasProximas && alertasProximas.length > 0) {
+                alertasProximas.forEach(alerta => {
+                    mostrarNotificacion(
+                        `⏰ ${operator.displayName}: "${alerta.tarea.titulo}" - ${alerta.tiempoRestante}`,
+                        'warning'
+                    );
+                });
+            }
+        } catch (error) {
+            console.warn('Error verificando alertas cruzadas:', error);
+        }
+    } else {
+        appState.viewingUserId = null; // Volver a mi
+        console.log('Volviendo a mis tareas');
+        mostrarNotificacion('Viendo mis tareas', 'info');
+    }
+
+    // Actualizar título o indicador visual
+    const title = document.querySelector('.app-subtitle');
+    if (title) {
+        if (operator) {
+            title.textContent = `Viendo a: ${operator.displayName}`;
+            title.style.color = 'var(--color-primary-500)';
+            title.style.fontWeight = 'bold';
+        } else {
+            title.textContent = 'Gestión de Tareas';
+            title.style.color = '';
+            title.style.fontWeight = '';
+        }
+    }
+
+    // Recargar componentes con nuevo ID
+    mostrarCargando(true);
+    await inicializarCalendario(document.getElementById('calendar-container'), {
+        onDateSelect: manejarSeleccionFecha,
+        userId: appState.viewingUserId
+    });
+
+    await inicializarListaTareas(document.getElementById('task-list-container'), {
+        onUpdate: manejarActualizacionTareas,
+        userId: appState.viewingUserId
+    });
+
+    await inicializarCompletedTaskList(document.getElementById('completed-tasks-container'), {
+        onUpdate: manejarActualizacionTareas,
+        userId: appState.viewingUserId
+    });
+
+    mostrarCargando(false);
 }
 
 /**

@@ -5,6 +5,7 @@
  */
 
 import { inicializarApp } from './App.js';
+import { registrarPush, pushSoportado } from './services/PushService.js';
 
 // Configurar zona horaria colombiana
 const TIMEZONE = 'America/Bogota';
@@ -70,13 +71,34 @@ function verificarCapacidades() {
 async function registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
         try {
-            // Por ahora no registramos SW, lo dejamos para fase futura
-            // const registration = await navigator.serviceWorker.register('/sw.js');
-            // console.log('Service Worker registrado:', registration.scope);
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('✅ Service Worker registrado:', registration.scope);
+
+            // Esperar a que el SW esté activo
+            if (registration.installing) {
+                await new Promise((resolve) => {
+                    registration.installing.addEventListener('statechange', (e) => {
+                        if (e.target.state === 'activated') resolve();
+                    });
+                });
+            }
+
+            // Registrar push notifications si está soportado
+            if (pushSoportado()) {
+                const pushRegistrado = await registrarPush(registration);
+                if (pushRegistrado) {
+                    console.log('🔔 Push notifications activadas');
+                } else {
+                    console.warn('⚠️ Push notifications no se pudieron activar');
+                }
+            }
+
+            return registration;
         } catch (error) {
             console.warn('Service Worker no disponible:', error);
         }
     }
+    return null;
 }
 
 /**

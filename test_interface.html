@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interface</title>
+    <style>
+        /* Mock relevant CSS */
+        body {
+            font-family: sans-serif;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script>
+        // Mock appState and functions
+        window.activeUser = { email: 'test@example.com' };
+        window.appState = {
+            selectedDate: '2026-02-15',
+            month: 1,
+            year: 2026,
+            tareas: [
+                { id: '1', title: 'Tarea Pendiente 1', estado: 'Pendiente', fecha: '2026-02-16', hora: '10:00', prioridad: 'alta' },
+                { id: '2', title: 'Tarea Pendiente 2', estado: 'Pendiente', fecha: '2026-02-18', hora: '14:00', prioridad: 'media' },
+                { id: '3', title: 'Tarea Cumplida 1', estado: 'Cumplida', fecha: '2026-02-14', hora: '09:00', prioridad: 'baja' }
+            ]
+        };
+        const DIAS_SEMANA_COMPLETO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+        // Mock renderizarCalendario and renderizarListaTareas
+        window.renderizarCalendario = function () { console.log('renderizarCalendario called'); };
+        window.renderizarListaTareas = function () { console.log('renderizarListaTareas called'); };
+        window.inicializarReconocimiento = function () { console.log('inicializarReconocimiento called'); };
+        window.toggleVoice = function () { alert('Voice toggle'); };
+        window.exportarExcelCumplidas = function () { alert('Export Excel'); };
+
+        // Paste relevant functions from asistente.js
+        window.renderizarApp = function () {
+            const app = document.getElementById('app');
+            if (!app) return;
+            const hoy = new Date();
+            const fechaString = `${DIAS_SEMANA_COMPLETO[hoy.getDay()]}, ${hoy.getDate()} de ${MESES[hoy.getMonth()]} de ${hoy.getFullYear()}`;
+
+            app.innerHTML = `
+                <div class="app-container" style="max-width: 1200px; margin: 0 auto; padding: 20px; font-family: 'Inter', sans-serif;">
+                    <header class="app-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+                        <div class="logo-section" style="display: flex; align-items: center; gap: 15px;">
+                            <img src="/logo-obligo360.png" alt="Obligo360" style="height: 50px;">
+                            <div><h1 style="margin: 0; font-size: 1.5rem; color: #1f2937;">Asistente Personal</h1><p style="margin: 0; color: #6b7280; font-size: 0.9rem;">${fechaString}</p></div>
+                        </div>
+                        <div class="user-controls" style="display: flex; gap: 15px; align-items: center;">
+                            <div id="subscription-badge" style="display: none;">PREMIUM</div>
+                            <button id="btn-pagar" onclick="abrirPago()" class="btn-subscribe" style="background: #4f46e5; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Gestionar Suscripción</button>
+                            <span id="subscription-status"></span>
+                            <button onclick="cerrarSesion()" style="background: transparent; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; cursor: pointer; color: #374151;">Salir</button>
+                        </div>
+                    </header>
+                    <main style="display: grid; grid-template-columns: 1fr 350px; gap: 30px;">
+                        <section class="left-column">
+                            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h2 id="calendar-month-title" style="margin: 0; font-size: 1.25rem;"></h2>
+                                <div class="calendar-nav">
+                                    <button onclick="cambiarMes(-1)" style="border: none; background: transparent; cursor: pointer; font-size: 1.2rem;">◀</button>
+                                    <button onclick="cambiarMes(1)" style="border: none; background: transparent; cursor: pointer; font-size: 1.2rem;">▶</button>
+                                </div>
+                            </div>
+                            <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 30px;"></div>
+                            <div class="tasks-container">
+                                <h3 style="font-size: 1.1rem; margin-bottom: 15px; border-left: 4px solid #4f46e5; padding-left: 10px;">Tareas para el <span id="selected-date-label">día</span></h3>
+                                <ul id="lista-tareas" style="list-style: none; padding: 0; margin: 0;"></ul>
+                            </div>
+                            
+                            <!-- Todas las Tareas Pendientes -->
+                            <div style="margin-top: 30px;">
+                                <h3 style="font-size: 1.1rem; margin-bottom: 15px; border-left: 4px solid #f59e0b; padding-left: 10px;">📋 Todas las Tareas Pendientes</h3>
+                                <div id="todas-pendientes" style="max-height: 400px; overflow-y: auto; scrollbar-width: thin;"></div>
+                            </div>
+                            
+                            <!-- Tareas Cumplidas -->
+                            <div style="margin-top: 30px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <h3 style="font-size: 1.1rem; border-left: 4px solid #10b981; padding-left: 10px; margin: 0;">✅ Tareas Cumplidas</h3>
+                                    <button onclick="exportarExcelCumplidas()" style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">📥 Descargar Excel</button>
+                                </div>
+                                <div id="lista-cumplidas" style="max-height: 400px; overflow-y: auto; scrollbar-width: thin;"></div>
+                            </div>
+                        </section>
+                        <section class="right-column" style="background: #f9fafb; padding: 25px; border-radius: 12px; height: fit-content; position: sticky; top: 20px;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <div id="voice-button" onclick="toggleVoice()" style="width: 80px; height: 80px; background: #ef4444; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease;">
+                                    <span style="font-size: 2rem;">🎙️</span>
+                                </div>
+                                <p id="voice-status" style="margin-top: 15px; color: #4b5563; font-weight: 500;">Toque para hablar</p>
+                            </div>
+                            <div id="transcript-container" style="background: white; padding: 15px; border-radius: 8px; min-height: 100px; border: 1px solid #e5e7eb;">
+                                <div id="transcript-header" style="display: none; color: #4f46e5; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">ESCUCHANDO...</div>
+                                <div id="transcript" style="color: #374151;"></div>
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            `;
+
+            if (!appState.selectedDate) appState.selectedDate = new Date().toISOString().split('T')[0];
+            renderizarCalendario();
+            renderizarListaTareas();
+            renderizarTareasPendientes();
+            renderizarTareasCumplidas();
+
+            // Inicializar Voz usando VoiceService (nueva implementación)
+            inicializarReconocimiento();
+        }
+
+        function renderizarTareasPendientes() {
+            const container = document.getElementById('todas-pendientes');
+            if (!container) return;
+
+            const pendientes = appState.tareas
+                .filter(t => t.estado !== 'Cumplida')
+                .sort((a, b) => {
+                    const dateA = new Date(a.fecha + 'T' + (a.hora || '00:00'));
+                    const dateB = new Date(b.fecha + 'T' + (b.hora || '00:00'));
+                    return dateA - dateB;
+                });
+
+            if (pendientes.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 20px;">🎉 No hay tareas pendientes. ¡Excelente trabajo!</p>';
+                return;
+            }
+
+            container.innerHTML = pendientes.map(t => {
+                let borderColor = '#9ca3af';
+                if (t.prioridad === 'alta') borderColor = '#ef4444';
+                else if (t.prioridad === 'baja') borderColor = '#10b981';
+                else if (t.prioridad === 'media') borderColor = '#f59e0b';
+
+                const fechaObj = new Date(t.fecha + 'T12:00:00');
+                const fechaStr = `${fechaObj.getDate()} de ${MESES[fechaObj.getMonth()]}`;
+                const ahora = new Date();
+                const diff = fechaObj - ahora;
+                const diasRestantes = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                let tiempoTexto = '';
+                if (diasRestantes < 0) tiempoTexto = '<span style="color: #ef4444; font-weight: bold;">⚠️ Vencida</span>';
+                else if (diasRestantes === 0) tiempoTexto = '<span style="color: #f59e0b; font-weight: bold;">📌 Hoy</span>';
+                else if (diasRestantes === 1) tiempoTexto = '<span style="color: #f59e0b;">Mañana</span>';
+                else tiempoTexto = `<span style="color: #6b7280;">En ${diasRestantes} días</span>`;
+
+                return `
+                    <div style="background: white; padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #e5e7eb; border-left: 4px solid ${borderColor}; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <strong style="display: block; color: #1f2937; font-size: 0.95rem;">${escapeHtml(t.titulo || t.title)}</strong>
+                            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 4px;">
+                                📅 ${fechaStr} · 🕐 ${t.hora || '—'} · ${t.contexto || 'general'} · ${tiempoTexto}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="marcarCumplida('${t.id}')" title="Marcar cumplida" style="border: none; background: #d1fae5; color: #065f46; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem;">✓</button>
+                            <button onclick="eliminarTarea('${t.id}')" title="Eliminar" style="border: none; background: #fee2e2; color: #991b1b; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem;">✕</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderizarTareasCumplidas() {
+            const container = document.getElementById('lista-cumplidas');
+            if (!container) return;
+
+            const cumplidas = appState.tareas
+                .filter(t => t.estado === 'Cumplida')
+                .sort((a, b) => {
+                    const dateA = new Date(a.actualizadaEn || a.fecha);
+                    const dateB = new Date(b.actualizadaEn || b.fecha);
+                    return dateB - dateA;
+                });
+
+            if (cumplidas.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 20px;">No hay tareas cumplidas aún.</p>';
+                return;
+            }
+
+            container.innerHTML = cumplidas.map(t => {
+                const fechaObj = new Date(t.fecha + 'T12:00:00');
+                const fechaStr = `${fechaObj.getDate()} de ${MESES[fechaObj.getMonth()]}`;
+                return `
+                    <div style="background: #f0fdf4; padding: 10px 15px; margin-bottom: 6px; border-radius: 8px; border-left: 3px solid #10b981; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <span style="text-decoration: line-through; color: #6b7280;">${escapeHtml(t.titulo || t.title)}</span>
+                            <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 2px;">📅 ${fechaStr} · 🕐 ${t.hora || '—'}</div>
+                        </div>
+                        <button onclick="restaurarTarea('${t.id}')" title="Restaurar a pendientes" style="border: none; background: #e0e7ff; color: #4338ca; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem;">↩️ Restaurar</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
+        // Initialize test
+        window.onload = function () {
+            renderizarApp();
+        };
+    </script>
+</body>
+
+</html>

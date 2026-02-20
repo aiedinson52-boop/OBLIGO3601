@@ -12,6 +12,7 @@ let containerElement = null;
 let tareas = [];
 let filtroActual = 'todos';
 let onTaskUpdateCallback = null;
+let currentUserId = null; // ID del usuario cuyas tareas estamos viendo
 
 /**
  * Inicializa el componente de lista de tareas
@@ -21,6 +22,7 @@ let onTaskUpdateCallback = null;
 export async function inicializarListaTareas(container, opciones = {}) {
   containerElement = container;
   onTaskUpdateCallback = opciones.onUpdate || null;
+  currentUserId = opciones.userId || null;
 
   await cargarTareas();
   renderizarLista();
@@ -32,7 +34,7 @@ export async function inicializarListaTareas(container, opciones = {}) {
 async function cargarTareas() {
   try {
     // CAMBIO CRITICO: Solo obtener pendientes
-    tareas = await obtenerTareasPendientes();
+    tareas = await obtenerTareasPendientes(currentUserId);
   } catch (error) {
     console.error('Error cargando tareas:', error);
     tareas = [];

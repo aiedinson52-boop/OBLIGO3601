@@ -5,12 +5,14 @@
 
 import { obtenerTareasConAlertasPendientes, marcarAlertaDisparada, obtenerTareasPendientes } from './TaskStorage.js';
 import { hablar } from './VoiceService.js';
+import { enviarPushAlerta, estaSuscrito } from './PushService.js';
 
 let intervalId = null;
 let notificationPermission = 'default';
 
 // Web Audio API Context (inicializado perezosamente)
 let audioContext = null;
+let audioDesbloqueado = false;
 
 /**
  * Inicializa el servicio de alertas
@@ -84,28 +86,49 @@ async function verificarAlertas() {
  * @param {Object} alerta - Alerta a disparar
  */
 async function dispararAlerta(tarea, alerta) {
-    // Reproducir sonido
+    const mensaje = construirMensajeAlerta(tarea, alerta);
+
+    // 1. PUSH VÍA SERVIDOR/APNs — Funciona en segundo plano en iOS
+    //    Esta es la única forma de reproducir sonido cuando la app no está en primer plano.
+    if (estaSuscrito()) {
+        try {
+            await enviarPushAlerta(
+                `⏰ Recordatorio: ${tarea.titulo}`,
+                mensaje,
+                {
+                    tareaId: tarea.id,
+                    alertaId: alerta.id,
+                    tag: `alerta-${tarea.id}-${alerta.id}`,
+                    url: '/'
+                }
+            );
+            console.log('[AlertService] Push enviado vía servidor/APNs');
+        } catch (error) {
+            console.warn('[AlertService] Error enviando push:', error);
+        }
+    }
+
+    // 2. FALLBACK: Sonido local (solo funciona en primer plano)
     reproducirSonido();
 
-    // Mostrar notificación del navegador
+    // 3. Notificación del navegador (fallback local)
     mostrarNotificacion(tarea, alerta);
 
-    // Hablar el mensaje (si está disponible)
+    // 4. Hablar el mensaje (si está disponible y en primer plano)
     try {
-        const mensaje = construirMensajeAlerta(tarea, alerta);
         await hablar(mensaje);
     } catch (error) {
         console.warn('No se pudo reproducir mensaje de voz:', error);
     }
 
-    // Marcar alerta como disparada
+    // 5. Marcar alerta como disparada
     try {
         await marcarAlertaDisparada(tarea.id, alerta.id);
     } catch (error) {
         console.error('Error marcando alerta como disparada:', error);
     }
 
-    // Emitir evento personalizado
+    // 6. Emitir evento personalizado
     dispatchAlertEvent(tarea, alerta);
 }
 
@@ -136,10 +159,46 @@ function construirMensajeAlerta(tarea, alerta) {
 }
 
 /**
+ * Desbloquea el AudioContext para Safari/Apple.
+ * Debe llamarse durante un gesto del usuario (click/touch).
+ * @returns {Promise<void>}
+ */
+export async function desbloquearAudioParaSafari() {
+    if (audioDesbloqueado) return;
+
+    try {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Reanudar contexto (obligatorio para Safari)
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        // Reproducir buffer de silencio para "activar" la salida de audio en Safari
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+
+        audioDesbloqueado = true;
+        console.log('🔊 AudioContext desbloqueado para Safari/Apple');
+    } catch (error) {
+        console.warn('No se pudo desbloquear AudioContext:', error);
+    }
+}
+
+/**
  * Reproduce el sonido de alerta (Alta Frecuencia)
  * Genera un patrón de pitidos fuertes usando Web Audio API
+ * Con fallback a HTML5 Audio para máxima compatibilidad
  */
-function reproducirSonido() {
+async function reproducirSonido() {
+    let sonidoReproducido = false;
+
+    // Intento 1: Web Audio API
     try {
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -147,7 +206,12 @@ function reproducirSonido() {
 
         // Reanudar contexto si está suspendido (requisito de navegadores modernos)
         if (audioContext.state === 'suspended') {
-            audioContext.resume();
+            await audioContext.resume();
+        }
+
+        // Verificar que el contexto esté corriendo
+        if (audioContext.state !== 'running') {
+            throw new Error('AudioContext no está en estado running: ' + audioContext.state);
         }
 
         const osc = audioContext.createOscillator();
@@ -172,9 +236,24 @@ function reproducirSonido() {
 
         osc.start();
         osc.stop(audioContext.currentTime + 0.6); // Detener después de la secuencia completa
+        sonidoReproducido = true;
 
     } catch (error) {
-        console.warn('Error reproduciendo sonido Web Audio API:', error);
+        console.warn('Web Audio API falló, usando fallback HTML5 Audio:', error);
+    }
+
+    // Intento 2: Fallback con HTML5 Audio (beep WAV en base64)
+    if (!sonidoReproducido) {
+        try {
+            // Beep corto WAV en base64 (1kHz, 0.3s, formato PCM)
+            const beepDataUri = 'data:audio/wav;base64,UklGRl4AAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTYAAAB/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fw==';
+            const audio = new Audio(beepDataUri);
+            audio.volume = 1.0;
+            await audio.play();
+            console.log('🔊 Sonido reproducido con HTML5 Audio (fallback)');
+        } catch (fallbackError) {
+            console.warn('Fallback HTML5 Audio también falló:', fallbackError);
+        }
     }
 }
 
@@ -357,6 +436,63 @@ export function programarAlertaManual(tarea, fechaAlerta, mensaje) {
     }, delay);
 
     return timeoutId;
+}
+
+/**
+ * Verifica alertas próximas de otro usuario (Cross-Operator Notification)
+ * Cuando un operador/admin visualiza las tareas de otro operador,
+ * se detectan tareas con fechas/horas próximas y se notifica.
+ * @param {string} userId - UID del usuario a verificar
+ * @returns {Promise<Array>} Tareas con alertas próximas
+ */
+export async function verificarAlertasDeOtroUsuario(userId) {
+    try {
+        const tareas = await obtenerTareasPendientes(userId);
+        const ahora = new Date();
+        const alertasProximas = [];
+
+        for (const tarea of tareas) {
+            const fechaTarea = new Date(`${tarea.fecha}T${tarea.hora}`);
+            const diff = fechaTarea - ahora;
+
+            // Si la tarea está dentro de las próximas 24 horas (o ya venció)
+            if (diff > 0 && diff <= 24 * 60 * 60 * 1000) {
+                const tiempoRestante = calcularTiempoRestante(tarea);
+                alertasProximas.push({
+                    tarea,
+                    tiempoRestante: tiempoRestante.texto,
+                    fechaTarea
+                });
+            }
+        }
+
+        // Ordenar por fecha más próxima
+        alertasProximas.sort((a, b) => a.fechaTarea - b.fechaTarea);
+
+        // Disparar notificación push al operador responsable (si aplica)
+        if (alertasProximas.length > 0 && estaSuscrito()) {
+            for (const alerta of alertasProximas.slice(0, 3)) { // Máximo 3 notificaciones
+                try {
+                    await enviarPushAlerta(
+                        `⏰ Alerta de equipo: ${alerta.tarea.titulo}`,
+                        `La tarea "${alerta.tarea.titulo}" está programada ${alerta.tiempoRestante}. ¡Atención requerida!`,
+                        {
+                            tareaId: alerta.tarea.id,
+                            tag: `cross-alert-${alerta.tarea.id}`,
+                            url: '/'
+                        }
+                    );
+                } catch (pushError) {
+                    console.warn('[AlertService] Error enviando push cruzado:', pushError);
+                }
+            }
+        }
+
+        return alertasProximas;
+    } catch (error) {
+        console.error('[AlertService] Error verificando alertas de otro usuario:', error);
+        return [];
+    }
 }
 
 /**

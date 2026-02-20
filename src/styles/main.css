@@ -209,35 +209,39 @@ body {
     cursor: pointer;
     transition: all var(--transition-spring);
     position: relative;
-    overflow: hidden;
-}
-
-.voice-btn::before {
-    content: '';
-    position: absolute;
-    inset: -50%;
-    background: conic-gradient(from 0deg, transparent, var(--color-primary-300), transparent);
-    animation: rotate 3s linear infinite;
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-}
-
-.voice-btn.listening::before {
-    opacity: 1;
+    z-index: 10;
 }
 
 .voice-btn.listening {
-    animation: pulse 1.5s ease-in-out infinite;
-    box-shadow: var(--shadow-xl), 0 0 60px rgba(99, 102, 241, 0.6);
+    animation: pulse-core 1.5s ease-in-out infinite;
+    box-shadow: var(--shadow-xl), 0 0 30px rgba(99, 102, 241, 0.6);
 }
 
-@keyframes rotate {
-    100% {
-        transform: rotate(360deg);
-    }
+/* Animación de ondas (Ripples) */
+.voice-btn.listening::before,
+.voice-btn.listening::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: var(--color-primary-400);
+    opacity: 0.6;
+    z-index: -1;
 }
 
-@keyframes pulse {
+.voice-btn.listening::before {
+    animation: ripple-effect 2s infinite;
+}
+
+.voice-btn.listening::after {
+    animation: ripple-effect 2s infinite 1.0s;
+}
+
+@keyframes pulse-core {
 
     0%,
     100% {
@@ -246,6 +250,20 @@ body {
 
     50% {
         transform: scale(1.05);
+    }
+}
+
+@keyframes ripple-effect {
+    0% {
+        width: 100%;
+        height: 100%;
+        opacity: 0.6;
+    }
+
+    100% {
+        width: 250%;
+        height: 250%;
+        opacity: 0;
     }
 }
 

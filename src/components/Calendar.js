@@ -15,7 +15,8 @@ let estadoCalendario = {
     selectedDate: null,
     festivos: [],
     tareasPorDia: new Map(),
-    vistaAnual: false
+    vistaAnual: false,
+    currentUserId: null // ID del usuario a visualizar
 };
 
 /**
@@ -32,6 +33,7 @@ export async function inicializarCalendario(container, opciones = {}) {
     const hoy = new Date();
     estadoCalendario.year = opciones.year || hoy.getFullYear();
     estadoCalendario.month = opciones.month !== undefined ? opciones.month : hoy.getMonth();
+    estadoCalendario.currentUserId = opciones.userId || null;
 
     if (opciones.onDateSelect) {
         onDateSelect = opciones.onDateSelect;
@@ -48,7 +50,7 @@ async function cargarDatosCalendario() {
     estadoCalendario.festivos = obtenerFestivos(estadoCalendario.year);
 
     try {
-        const tareas = await obtenerTareasPorMes(estadoCalendario.year, estadoCalendario.month);
+        const tareas = await obtenerTareasPorMes(estadoCalendario.year, estadoCalendario.month, estadoCalendario.currentUserId);
         estadoCalendario.tareasPorDia = new Map();
 
         tareas.forEach(tarea => {
@@ -279,7 +281,7 @@ async function seleccionarDia(fechaStr, container) {
     }
 
     // Obtener tareas del día
-    const tareas = await obtenerTareasPorFecha(fechaStr);
+    const tareas = await obtenerTareasPorFecha(fechaStr, estadoCalendario.currentUserId);
 
     // Mostrar resumen del día
     mostrarResumenDia(fechaStr, tareas, container);

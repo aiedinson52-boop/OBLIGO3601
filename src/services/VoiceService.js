@@ -1,18 +1,237 @@
 /**
- * Servicio de Reconocimiento de Voz
- * Implementa MediaRecorder + Backend STT (Deepgram)
- * Compatible con Android Chrome e iOS Safari
+ * Servicio de Reconocimiento de Voz — v2.0
  * 
- * NOTA: NO usa SpeechRecognition/webkitSpeechRecognition
+ * ESTRATEGIA PRIMARIA: RobustSpeechPlugin nativo (Android/iOS)
+ *   - Singleton SpeechRecognizer con retry, audio focus, privacy toggle
+ * 
+ * ESTRATEGIA FALLBACK: MediaRecorder + Backend STT (Deepgram)
+ *   - Compatible con todos los navegadores/WebViews
+ * 
+ * Auto-fallback: si el motor nativo falla 3 veces consecutivas,
+ * cambia automáticamente a StreamingStrategy.
  */
 
 import { getAudioConfig, isMediaRecorderSupported, detectDevice } from './DeviceService.js';
+import { getApiUrl } from '../config/api.js';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
+// ── Register custom plugin ──────────────────────────────
+const RobustSpeech = Capacitor.isNativePlatform()
+    ? registerPlugin('RobustSpeech')
+    : null;
+
+// ── Module State ────────────────────────────────────────
 let strategy = null;
 let synthesis = null;
 let onResultCallback = null;
 let onErrorCallback = null;
 let onStatusChangeCallback = null;
+
+// Consecutive native failure counter for auto-fallback
+let nativeFailCount = 0;
+const MAX_NATIVE_FAILS_BEFORE_FALLBACK = 3;
+
+// ==========================================
+// ESTRATEGIA: Nativa Robusta (Android/iOS)
+// ==========================================
+
+class NativeStrategy {
+    constructor() {
+        this.isListeningFlag = false;
+        this.listeners = [];
+    }
+
+    async init() {
+        if (!RobustSpeech) {
+            console.warn('[VoiceService] RobustSpeech plugin not available');
+            return false;
+        }
+
+        try {
+            // Check availability
+            const status = await RobustSpeech.checkAvailability();
+            console.log('[VoiceService] Native availability:', JSON.stringify(status));
+
+            if (!status.available) {
+                console.error('[VoiceService] Native recognizer not available on this device');
+                return false;
+            }
+
+            // Set up listeners
+            this._setupListeners();
+            return true;
+
+        } catch (error) {
+            console.error('[VoiceService] Error initializing native strategy:', error);
+            return false;
+        }
+    }
+
+    _setupListeners() {
+        // Remove any existing listeners
+        this.listeners.forEach(handle => {
+            try { handle.remove(); } catch (e) { /* ignore */ }
+        });
+        this.listeners = [];
+
+        // Partial results
+        const partialHandle = RobustSpeech.addListener('partialResult', (data) => {
+            if (data.transcript) {
+                console.log(`[VoiceService] Partial: "${data.transcript}"`);
+                if (onResultCallback) {
+                    onResultCallback({
+                        final: data.transcript,
+                        interim: data.transcript,
+                        isFinal: false
+                    });
+                }
+            }
+        });
+        this.listeners.push(partialHandle);
+
+        // Final results
+        const finalHandle = RobustSpeech.addListener('finalResult', (data) => {
+            const transcript = data.transcript || '';
+            console.log(`[VoiceService] Final: "${transcript}" (confidence=${data.confidence})`);
+
+            this.isListeningFlag = false;
+
+            if (transcript && onResultCallback) {
+                // Reset fail counter on success
+                nativeFailCount = 0;
+
+                onResultCallback({
+                    final: transcript,
+                    interim: '',
+                    isFinal: true
+                });
+            } else if (!transcript) {
+                // Empty result — not a critical failure, just no speech
+                if (onErrorCallback) {
+                    onErrorCallback('No se detectó ningún audio. Por favor, hable más fuerte.');
+                }
+            }
+
+            if (onStatusChangeCallback) onStatusChangeCallback('stopped');
+        });
+        this.listeners.push(finalHandle);
+
+        // State changes
+        const stateHandle = RobustSpeech.addListener('stateChange', (data) => {
+            console.log(`[VoiceService] State: ${data.state}`);
+            if (data.state === 'listening') {
+                this.isListeningFlag = true;
+                if (onStatusChangeCallback) onStatusChangeCallback('listening');
+            } else if (data.state === 'processing') {
+                if (onStatusChangeCallback) onStatusChangeCallback('processing');
+            } else if (data.state === 'stopped') {
+                this.isListeningFlag = false;
+                if (onStatusChangeCallback) onStatusChangeCallback('stopped');
+            }
+        });
+        this.listeners.push(stateHandle);
+
+        // Errors
+        const errorHandle = RobustSpeech.addListener('error', (data) => {
+            console.error(`[VoiceService] Native error: code=${data.code}, msg=${data.message}`);
+            this.isListeningFlag = false;
+
+            nativeFailCount++;
+            console.log(`[VoiceService] Native fail count: ${nativeFailCount}/${MAX_NATIVE_FAILS_BEFORE_FALLBACK}`);
+
+            // Check if we should auto-fallback
+            if (nativeFailCount >= MAX_NATIVE_FAILS_BEFORE_FALLBACK) {
+                console.warn('[VoiceService] ⚠️ Native engine failed too many times — switching to StreamingStrategy');
+                switchToStreamingFallback();
+                return;
+            }
+
+            const errorMessages = {
+                'PERMISSION_DENIED': 'El acceso al micrófono fue denegado. Por favor, permita el acceso en Ajustes.',
+                'MIC_BLOCKED': 'El micrófono está bloqueado por el toggle de privacidad. Desactívelo en Ajustes Rápidos.',
+                'NOT_AVAILABLE': 'El reconocedor de voz no está disponible en este dispositivo.',
+                'AUDIO_ERROR': 'Error de audio. Otro app puede estar usando el micrófono.',
+                'NETWORK_ERROR': 'Error de red. Verifique su conexión a internet.',
+                'NETWORK_TIMEOUT': 'Tiempo de espera de red agotado.',
+                'SERVER_ERROR': 'Error del servidor de reconocimiento.',
+                'CLIENT_ERROR': 'Error interno del cliente de voz.',
+                'SPEECH_TIMEOUT': 'No se detectó voz. Intente de nuevo.',
+                'NO_MATCH': 'No se entendió el audio. Hable más claro.',
+                'RECOGNIZER_BUSY': 'El servicio de voz está ocupado. Intente de nuevo.',
+                'TIMEOUT': 'Tiempo de escucha agotado.',
+                'START_FAILED': 'No se pudo iniciar el reconocimiento.'
+            };
+
+            const msg = errorMessages[data.code] || `Error de reconocimiento: ${data.message || data.code}`;
+            if (onErrorCallback) onErrorCallback(msg);
+            if (onStatusChangeCallback) onStatusChangeCallback('error');
+        });
+        this.listeners.push(errorHandle);
+    }
+
+    async start() {
+        if (this.isListeningFlag) {
+            console.warn('[VoiceService] Already listening — ignoring start()');
+            return false;
+        }
+
+        try {
+            // Request permission if needed
+            const { granted } = await RobustSpeech.requestPermission();
+            if (!granted) {
+                handleError('not-allowed');
+                return false;
+            }
+
+            this.isListeningFlag = true;
+            if (onStatusChangeCallback) onStatusChangeCallback('listening');
+
+            await RobustSpeech.start({
+                language: 'es-CO'
+            });
+
+            return true;
+
+        } catch (error) {
+            console.error('[VoiceService] Error starting native:', error);
+            this.isListeningFlag = false;
+
+            nativeFailCount++;
+
+            // Map Capacitor rejection to user message
+            const errorMsg = error.message || 'Error desconocido';
+            if (errorMsg.includes('Permission') || errorMsg.includes('PERMISSION')) {
+                handleError('not-allowed');
+            } else if (errorMsg.includes('MIC_BLOCKED')) {
+                handleError('mic-blocked');
+            } else {
+                handleError('audio-capture');
+            }
+
+            // Check auto-fallback
+            if (nativeFailCount >= MAX_NATIVE_FAILS_BEFORE_FALLBACK) {
+                switchToStreamingFallback();
+            }
+
+            return false;
+        }
+    }
+
+    async stop() {
+        try {
+            await RobustSpeech.stop();
+            this.isListeningFlag = false;
+        } catch (error) {
+            console.error('[VoiceService] Error stopping native:', error);
+            this.isListeningFlag = false;
+        }
+    }
+
+    isActive() {
+        return this.isListeningFlag;
+    }
+}
 
 // ==========================================
 // ESTRATEGIA: Streaming con Backend STT
@@ -138,7 +357,7 @@ class StreamingStrategy {
         const base64Audio = await this.blobToBase64(audioBlob);
 
         // Llamar al endpoint del backend
-        const response = await fetch('/api/voice-transcribe', {
+        const response = await fetch(getApiUrl('/api/voice-transcribe'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -182,6 +401,31 @@ class StreamingStrategy {
     }
 }
 
+// ==========================================
+// AUTO-FALLBACK LOGIC
+// ==========================================
+
+function switchToStreamingFallback() {
+    console.log('[VoiceService] 🔄 Switching to StreamingStrategy (Deepgram) fallback');
+
+    if (isMediaRecorderSupported()) {
+        strategy = new StreamingStrategy();
+        if (onErrorCallback) {
+            onErrorCallback('El motor de voz nativo falló. Se activó el modo alternativo (Deepgram).');
+        }
+        if (onStatusChangeCallback) onStatusChangeCallback('stopped');
+    } else {
+        console.error('[VoiceService] ❌ Neither native nor streaming strategy available');
+        if (onErrorCallback) {
+            onErrorCallback('No se pudo activar ningún motor de reconocimiento de voz.');
+        }
+    }
+}
+
+// ==========================================
+// ERROR HANDLER
+// ==========================================
+
 function handleError(errorCode) {
     const mensajesError = {
         'no-speech': 'No se detectó ningún audio. Por favor, intente de nuevo.',
@@ -191,7 +435,10 @@ function handleError(errorCode) {
         'network': 'Error de red. Verifique su conexión a internet.',
         'aborted': 'El reconocimiento fue cancelado.',
         'transcription-failed': 'Falló la transcripción. Intente de nuevo.',
-        'not-supported': 'El reconocimiento de voz no está soportado en este navegador.'
+        'not-supported': 'El reconocimiento de voz no está soportado en este navegador.',
+        'busy': 'El servicio de voz está ocupado. Intente de nuevo en un momento.',
+        'no-match': 'No se entendió el audio. Hable más claro.',
+        'mic-blocked': 'El micrófono está bloqueado por el toggle de privacidad. Desactívelo en Ajustes Rápidos.'
     };
 
     const mensaje = mensajesError[errorCode] || `Error de reconocimiento: ${errorCode}`;
@@ -204,7 +451,7 @@ function handleError(errorCode) {
 // ==========================================
 
 export function soportaReconocimientoVoz() {
-    return isMediaRecorderSupported();
+    return isMediaRecorderSupported() || Capacitor.isNativePlatform();
 }
 
 export function soportaSintesisVoz() {
@@ -216,12 +463,48 @@ export function inicializarVoz(callbacks = {}) {
     onErrorCallback = callbacks.onError || null;
     onStatusChangeCallback = callbacks.onStatusChange || null;
 
-    // Usar siempre StreamingStrategy
-    if (isMediaRecorderSupported()) {
+    // Reset fail counter
+    nativeFailCount = 0;
+
+    // Try native strategy first on Capacitor platforms
+    if (Capacitor.isNativePlatform() && RobustSpeech) {
+        const nativeStrat = new NativeStrategy();
+        nativeStrat.init().then(available => {
+            if (available) {
+                strategy = nativeStrat;
+                console.log('[VoiceService] ✅ Inicializado con NativeStrategy (RobustSpeechPlugin)');
+            } else {
+                console.warn('[VoiceService] Native not available — falling back to Streaming');
+                if (isMediaRecorderSupported()) {
+                    strategy = new StreamingStrategy();
+                    console.log('[VoiceService] ✅ Inicializado con StreamingStrategy (fallback)');
+                }
+            }
+        }).catch(err => {
+            console.error('[VoiceService] Error init native:', err);
+            if (isMediaRecorderSupported()) {
+                strategy = new StreamingStrategy();
+                console.log('[VoiceService] ✅ Inicializado con StreamingStrategy (fallback after error)');
+            }
+        });
+
+        // Lifecycle: stop on background
+        App.addListener('appStateChange', ({ isActive }) => {
+            if (!isActive) {
+                console.log('[VoiceService] App en segundo plano. Deteniendo escucha.');
+                if (strategy && strategy.isActive()) {
+                    strategy.stop();
+                }
+            }
+        });
+
+        // Set strategy to native initially (async init will replace if needed)
+        strategy = nativeStrat;
+    } else if (isMediaRecorderSupported()) {
         strategy = new StreamingStrategy();
-        console.log(`[VoiceService] Inicializado con StreamingStrategy (${detectDevice()})`);
+        console.log(`[VoiceService] ✅ Inicializado con StreamingStrategy (${detectDevice()})`);
     } else {
-        console.error('[VoiceService] MediaRecorder no soportado');
+        console.error('[VoiceService] ❌ No voice strategy available');
         return false;
     }
 
@@ -496,7 +779,7 @@ export function extraerInfoTarea(texto) {
         info.prioridad = 'baja';
     }
 
-    // Extraer título (simplificado: usar el texto limpio sin las partes de fecha/hora)
+    // Extraer título
     let titulo = texto
         .replace(patronHora, '')
         .replace(patronPasadoManana, '')
@@ -525,9 +808,20 @@ export function extraerInfoTarea(texto) {
  * @returns {Promise<boolean>} true si se otorgó permiso
  */
 export async function solicitarPermisoMicrofono() {
+    // On native, use the plugin's permission flow
+    if (Capacitor.isNativePlatform() && RobustSpeech) {
+        try {
+            const { granted } = await RobustSpeech.requestPermission();
+            return granted;
+        } catch (error) {
+            console.error('[VoiceService] Error requesting native permission:', error);
+            return false;
+        }
+    }
+
+    // Web fallback
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Detener el stream inmediatamente, solo verificamos el permiso
         stream.getTracks().forEach(track => track.stop());
         return true;
     } catch (error) {
@@ -541,8 +835,16 @@ export async function solicitarPermisoMicrofono() {
  * @returns {Promise<string>} 'granted', 'denied', o 'prompt'
  */
 export async function verificarPermisoMicrofono() {
+    if (Capacitor.isNativePlatform() && RobustSpeech) {
+        try {
+            const status = await RobustSpeech.checkAvailability();
+            return status.hasPermission ? 'granted' : 'prompt';
+        } catch (e) {
+            return 'prompt';
+        }
+    }
+
     if (!navigator.permissions) {
-        // Fallback para navegadores sin API de permisos
         return 'prompt';
     }
 

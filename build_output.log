@@ -1,0 +1,355 @@
+
+> Configure project :app
+WARNING: The option setting 'android.usesSdkInManifest.disallowed=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.sdk.defaultTargetSdkToCompileSdkIfUnset=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.enableAppCompileTimeRClass=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.builtInKotlin=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.newDsl=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.r8.optimizedResourceShrinking=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.defaults.buildfeatures.resvalues=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-android
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-app
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-community-speech-recognition
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-keyboard
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-splash-screen
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Configure project :capacitor-status-bar
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+WARNING: The property android.dependency.excludeLibraryComponentsFromConstraints improves project import performance for very large projects. It should be enabled to improve performance.
+To suppress this warning, add android.generateSyncIssueWhenLibraryConstraintsAreEnabled=false to gradle.properties
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preReleaseBuild UP-TO-DATE
+> Task :capacitor-android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-android:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-app:preBuild UP-TO-DATE
+> Task :capacitor-app:preReleaseBuild UP-TO-DATE
+> Task :capacitor-app:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-app:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-app:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-community-speech-recognition:preBuild UP-TO-DATE
+> Task :capacitor-community-speech-recognition:preReleaseBuild UP-TO-DATE
+> Task :capacitor-community-speech-recognition:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-community-speech-recognition:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-community-speech-recognition:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preReleaseBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-keyboard:preBuild UP-TO-DATE
+> Task :capacitor-keyboard:preReleaseBuild UP-TO-DATE
+> Task :capacitor-keyboard:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-keyboard:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-keyboard:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-splash-screen:preBuild UP-TO-DATE
+> Task :capacitor-splash-screen:preReleaseBuild UP-TO-DATE
+> Task :capacitor-splash-screen:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-splash-screen:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-splash-screen:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-status-bar:preBuild UP-TO-DATE
+> Task :capacitor-status-bar:preReleaseBuild UP-TO-DATE
+> Task :capacitor-status-bar:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-status-bar:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-status-bar:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :capacitor-android:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-android:generateReleaseResources UP-TO-DATE
+> Task :capacitor-android:packageReleaseResources UP-TO-DATE
+> Task :capacitor-android:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-android:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-android:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-android:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-android:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :capacitor-android:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :capacitor-community-speech-recognition:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-community-speech-recognition:generateReleaseResources UP-TO-DATE
+> Task :capacitor-community-speech-recognition:packageReleaseResources UP-TO-DATE
+> Task :capacitor-community-speech-recognition:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-community-speech-recognition:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-community-speech-recognition:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-community-speech-recognition:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-community-speech-recognition:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :capacitor-community-speech-recognition:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :capacitor-android:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :capacitor-app:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-app:generateReleaseResources UP-TO-DATE
+> Task :capacitor-app:packageReleaseResources UP-TO-DATE
+> Task :capacitor-app:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-app:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-app:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-app:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-app:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :capacitor-app:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :capacitor-keyboard:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-keyboard:generateReleaseResources UP-TO-DATE
+> Task :capacitor-keyboard:packageReleaseResources UP-TO-DATE
+> Task :capacitor-keyboard:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-keyboard:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-keyboard:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-keyboard:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-keyboard:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :capacitor-keyboard:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :capacitor-splash-screen:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-splash-screen:generateReleaseResources UP-TO-DATE
+> Task :capacitor-splash-screen:packageReleaseResources UP-TO-DATE
+> Task :capacitor-splash-screen:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-splash-screen:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-splash-screen:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-splash-screen:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-splash-screen:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :capacitor-splash-screen:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :capacitor-status-bar:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-status-bar:generateReleaseResources UP-TO-DATE
+> Task :capacitor-status-bar:packageReleaseResources UP-TO-DATE
+> Task :capacitor-status-bar:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-status-bar:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-status-bar:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-status-bar:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-status-bar:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :capacitor-status-bar:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateReleaseResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:packageReleaseResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processReleaseNavigationResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :app:checkReleaseDuplicateClasses UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :capacitor-android:writeReleaseAarMetadata UP-TO-DATE
+> Task :capacitor-app:writeReleaseAarMetadata UP-TO-DATE
+> Task :capacitor-community-speech-recognition:writeReleaseAarMetadata UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:writeReleaseAarMetadata UP-TO-DATE
+> Task :capacitor-keyboard:writeReleaseAarMetadata UP-TO-DATE
+> Task :capacitor-splash-screen:writeReleaseAarMetadata UP-TO-DATE
+> Task :capacitor-status-bar:writeReleaseAarMetadata UP-TO-DATE
+> Task :app:checkReleaseAarMetadata UP-TO-DATE
+> Task :app:processReleaseNavigationResources UP-TO-DATE
+> Task :app:compileReleaseNavigationResources UP-TO-DATE
+> Task :app:generateReleaseResValues UP-TO-DATE
+> Task :app:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateReleaseResources UP-TO-DATE
+> Task :app:mergeReleaseResources UP-TO-DATE
+> Task :app:packageReleaseResources UP-TO-DATE
+> Task :app:parseReleaseLocalResources UP-TO-DATE
+> Task :app:createReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-android:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-android:processReleaseManifest UP-TO-DATE
+> Task :capacitor-app:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-app:processReleaseManifest UP-TO-DATE
+> Task :capacitor-community-speech-recognition:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-community-speech-recognition:processReleaseManifest UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processReleaseManifest UP-TO-DATE
+> Task :capacitor-keyboard:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-keyboard:processReleaseManifest UP-TO-DATE
+> Task :capacitor-splash-screen:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-splash-screen:processReleaseManifest UP-TO-DATE
+> Task :capacitor-status-bar:extractDeepLinksRelease UP-TO-DATE
+> Task :capacitor-status-bar:processReleaseManifest UP-TO-DATE
+> Task :app:processReleaseMainManifest UP-TO-DATE
+> Task :app:processReleaseManifest UP-TO-DATE
+> Task :app:processReleaseManifestForPackage UP-TO-DATE
+> Task :capacitor-android:compileReleaseLibraryResources UP-TO-DATE
+> Task :capacitor-app:compileReleaseLibraryResources UP-TO-DATE
+> Task :capacitor-community-speech-recognition:compileReleaseLibraryResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileReleaseLibraryResources UP-TO-DATE
+> Task :capacitor-keyboard:compileReleaseLibraryResources UP-TO-DATE
+> Task :capacitor-splash-screen:compileReleaseLibraryResources UP-TO-DATE
+> Task :capacitor-status-bar:compileReleaseLibraryResources UP-TO-DATE
+> Task :app:processReleaseResources UP-TO-DATE
+> Task :capacitor-app:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :capacitor-community-speech-recognition:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :capacitor-keyboard:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :capacitor-splash-screen:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :capacitor-status-bar:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :app:javaPreCompileRelease UP-TO-DATE
+> Task :app:desugarReleaseFileDependencies UP-TO-DATE
+> Task :app:mergeReleaseStartupProfile UP-TO-DATE
+> Task :app:mergeExtDexRelease UP-TO-DATE
+> Task :capacitor-android:prepareReleaseArtProfile UP-TO-DATE
+> Task :capacitor-app:prepareReleaseArtProfile UP-TO-DATE
+> Task :capacitor-community-speech-recognition:prepareReleaseArtProfile UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:prepareReleaseArtProfile UP-TO-DATE
+> Task :capacitor-keyboard:prepareReleaseArtProfile UP-TO-DATE
+> Task :capacitor-splash-screen:prepareReleaseArtProfile UP-TO-DATE
+> Task :capacitor-status-bar:prepareReleaseArtProfile UP-TO-DATE
+> Task :app:mergeReleaseArtProfile UP-TO-DATE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-android:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-android:mergeReleaseAssets UP-TO-DATE
+> Task :capacitor-app:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-app:mergeReleaseAssets UP-TO-DATE
+> Task :capacitor-community-speech-recognition:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-community-speech-recognition:mergeReleaseAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseAssets UP-TO-DATE
+> Task :capacitor-keyboard:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-keyboard:mergeReleaseAssets UP-TO-DATE
+> Task :capacitor-splash-screen:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-splash-screen:mergeReleaseAssets UP-TO-DATE
+> Task :capacitor-status-bar:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-status-bar:mergeReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets UP-TO-DATE
+> Task :app:compressReleaseAssets UP-TO-DATE
+> Task :app:extractReleaseVersionControlInfo UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :capacitor-android:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-android:createFullJarRelease UP-TO-DATE
+> Task :capacitor-android:extractProguardFiles UP-TO-DATE
+> Task :capacitor-android:generateReleaseLintModel UP-TO-DATE
+> Task :capacitor-android:prepareLintJarForPublish UP-TO-DATE
+> Task :capacitor-app:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-app:createFullJarRelease UP-TO-DATE
+> Task :capacitor-app:extractProguardFiles UP-TO-DATE
+> Task :capacitor-app:generateReleaseLintModel UP-TO-DATE
+> Task :capacitor-app:prepareLintJarForPublish UP-TO-DATE
+> Task :capacitor-community-speech-recognition:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-community-speech-recognition:createFullJarRelease UP-TO-DATE
+> Task :capacitor-community-speech-recognition:extractProguardFiles UP-TO-DATE
+> Task :capacitor-community-speech-recognition:generateReleaseLintModel UP-TO-DATE
+> Task :capacitor-community-speech-recognition:prepareLintJarForPublish UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-cordova-android-plugins:createFullJarRelease UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:extractProguardFiles UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateReleaseLintModel UP-TO-DATE
+> Task :capacitor-keyboard:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-keyboard:createFullJarRelease
+> Task :capacitor-keyboard:extractProguardFiles
+> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish
+> Task :capacitor-keyboard:generateReleaseLintModel
+> Task :capacitor-keyboard:prepareLintJarForPublish
+> Task :capacitor-splash-screen:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-splash-screen:createFullJarRelease
+> Task :capacitor-splash-screen:extractProguardFiles
+> Task :capacitor-splash-screen:generateReleaseLintModel
+> Task :capacitor-splash-screen:prepareLintJarForPublish
+> Task :capacitor-status-bar:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-status-bar:createFullJarRelease
+> Task :capacitor-status-bar:extractProguardFiles
+> Task :capacitor-status-bar:generateReleaseLintModel
+> Task :capacitor-status-bar:prepareLintJarForPublish
+> Task :capacitor-community-speech-recognition:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-community-speech-recognition:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-community-speech-recognition:checkReleaseAarMetadata
+> Task :capacitor-community-speech-recognition:extractDeepLinksForAarRelease
+> Task :capacitor-community-speech-recognition:extractReleaseAnnotations
+> Task :capacitor-community-speech-recognition:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-community-speech-recognition:mergeReleaseConsumerProguardFiles
+> Task :capacitor-app:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-app:checkReleaseAarMetadata
+> Task :capacitor-app:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-app:extractDeepLinksForAarRelease
+> Task :capacitor-app:extractReleaseAnnotations
+> Task :capacitor-app:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-community-speech-recognition:mergeReleaseJavaResource
+> Task :capacitor-app:mergeReleaseConsumerProguardFiles
+
+> Task :app:compileReleaseKotlin FAILED
+
+> Task :capacitor-community-speech-recognition:syncReleaseLibJars
+
+[Incubating] Problems report is available at: file:///C:/Users/eaper/Downloads/SOFTW/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.2.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+195 actionable tasks: 28 executed, 167 up-to-date

@@ -1,21 +1,24 @@
 /**
  * Service Worker para Obligo360 PWA
- * Maneja cache y funcionamiento offline
+ * Maneja cache, funcionamiento offline y Web Push Notifications
+ * 
+ * IMPORTANTE: Este SW maneja notificaciones push vía APNs.
+ * El campo "sound" en el payload hace que iOS reproduzca
+ * el sonido del sistema incluso en segundo plano.
  */
 
-const CACHE_NAME = 'obligo360-v1';
+const CACHE_NAME = 'obligo360-v2';
 const STATIC_ASSETS = [
     '/',
     '/asistente.html',
     '/src/styles/main.css',
     '/src/App.js',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png'
+    '/icons/icon.svg'
 ];
 
 // Instalación - Cachear recursos estáticos
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing...');
+    console.log('[SW] Installing v2...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -28,7 +31,7 @@ self.addEventListener('install', (event) => {
 
 // Activación - Limpiar caches antiguos
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating...');
+    console.log('[SW] Activating v2...');
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
@@ -83,28 +86,104 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// Notificaciones push (para futuro uso)
+/**
+ * EVENTO PUSH — Recibe notificaciones push del servidor vía APNs
+ * 
+ * Este es el handler crítico: cuando el servidor envía un push con
+ * "sound": "default", iOS reproduce el sonido del sistema automáticamente.
+ * No depende de JavaScript ni del estado de la app.
+ */
 self.addEventListener('push', (event) => {
+    console.log('[SW] Push recibido');
+
+    let notificationData = {
+        title: 'Obligo360',
+        body: 'Tienes una tarea pendiente',
+        icon: '/icons/icon.svg',
+        badge: '/icons/icon.svg',
+        tag: 'obligo360-notification',
+        data: { url: '/' }
+    };
+
     if (event.data) {
-        const data = event.data.json();
-        const options = {
-            body: data.body || 'Tienes una tarea pendiente',
-            icon: '/icons/icon-192x192.png',
-            badge: '/icons/icon-72x72.png',
-            vibrate: [200, 100, 200],
-            tag: 'obligo360-notification',
-            data: data.url || '/'
-        };
-        event.waitUntil(
-            self.registration.showNotification(data.title || 'Obligo360', options)
-        );
+        try {
+            const payload = event.data.json();
+            notificationData = {
+                title: payload.title || notificationData.title,
+                body: payload.body || notificationData.body,
+                icon: payload.icon || notificationData.icon,
+                badge: payload.badge || notificationData.badge,
+                tag: payload.tag || notificationData.tag,
+                data: payload.data || notificationData.data
+            };
+        } catch (e) {
+            // Si no es JSON, usar el texto plano como body
+            notificationData.body = event.data.text() || notificationData.body;
+        }
     }
+
+    const options = {
+        body: notificationData.body,
+        icon: notificationData.icon,
+        badge: notificationData.badge,
+        tag: notificationData.tag,
+        data: notificationData.data,
+        // Vibración para dispositivos que lo soporten
+        vibrate: [200, 100, 200, 100, 200],
+        // Mantener la notificación hasta que el usuario interactúe
+        requireInteraction: true,
+        // Acciones en la notificación (Android; iOS las ignora pero no causa error)
+        actions: [
+            { action: 'open', title: '📋 Ver tarea' },
+            { action: 'dismiss', title: '✕ Descartar' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(notificationData.title, options)
+    );
 });
 
-// Click en notificación
+/**
+ * Click en notificación — Abre o enfoca la app
+ */
 self.addEventListener('notificationclick', (event) => {
+    console.log('[SW] Notification click:', event.action);
+
     event.notification.close();
+
+    // Si el usuario descartó, no hacer nada
+    if (event.action === 'dismiss') {
+        return;
+    }
+
+    // URL a abrir (viene del payload push)
+    const targetUrl = event.notification.data?.url || '/';
+
     event.waitUntil(
-        clients.openWindow(event.notification.data)
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((clientList) => {
+                // Si la app ya está abierta, enfocarla
+                for (const client of clientList) {
+                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                        client.focus();
+                        // Enviar mensaje a la app con datos de la notificación
+                        client.postMessage({
+                            type: 'NOTIFICATION_CLICK',
+                            data: event.notification.data
+                        });
+                        return;
+                    }
+                }
+                // Si no está abierta, abrirla
+                return clients.openWindow(targetUrl);
+            })
     );
+});
+
+/**
+ * Cierre de notificación (sin click)
+ */
+self.addEventListener('notificationclose', (event) => {
+    console.log('[SW] Notificación cerrada sin interacción');
 });
