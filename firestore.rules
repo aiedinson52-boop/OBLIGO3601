@@ -2,35 +2,66 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Colección: users (nueva - principal)
+    // ─────────────────────────────────────────────
+    // Función auxiliar: verifica si el usuario
+    // autenticado tiene rol 'admin' en su perfil
+    // ─────────────────────────────────────────────
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ─────────────────────────────────────────────
+    // Colección: users  (principal)
+    // ─────────────────────────────────────────────
     match /users/{userId} {
-      // Funciones auxiliares
-      function isAdmin() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      }
-
-      function isOwnerOrAdmin() {
-        return request.auth != null && (request.auth.uid == userId || isAdmin());
-      }
-
+      // Cualquier usuario autenticado puede leer perfiles
+      // (necesario para panel de equipo y selección de operador)
       allow read: if request.auth != null;
-      allow create, update: if isOwnerOrAdmin();
 
+      // El propio usuario crea/actualiza su perfil (registro y lastLogin)
+      // El Admin también puede crear el perfil de un operador nuevo
+      allow create, update: if request.auth != null &&
+        (request.auth.uid == userId || isAdmin());
+
+      // Nadie puede eliminar perfiles (seguridad)
+      allow delete: if false;
+
+      // ── Subcolección: tasks ──────────────────
       match /tasks/{taskId} {
-        allow read, write: if isOwnerOrAdmin();
+        // Dueño de las tareas: acceso total
+        // Admin: acceso total (ver/editar tareas de cualquier operador)
+        allow read, write: if request.auth != null &&
+          (request.auth.uid == userId || isAdmin());
       }
     }
 
-    // Colección: usuarios (vieja - para migración)
+    // ─────────────────────────────────────────────
+    // Colección: usuarios  (vieja - solo lectura para migración)
+    // También cubre el path de trial: usuarios/{uid}/config/trial
+    // ─────────────────────────────────────────────
     match /usuarios/{userId} {
+      // Solo el propio usuario puede leer su documento antiguo
       allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
 
+      // Subcolección: tareas (migración - solo lectura)
       match /tareas/{tareaId} {
         allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
+
+      // Subcolección: config (trial de voz)
+      // El propio usuario puede leer y escribir su configuración de trial
+      match /config/{configId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Colección: trials
+    // ─────────────────────────────────────────────
+    // Colección: trials  (periodo de prueba global)
+    // ─────────────────────────────────────────────
     match /trials/{trialId} {
       allow read, write: if request.auth != null;
     }
