@@ -197,12 +197,12 @@ async function manejarAccionTarea(e) {
   try {
     switch (action) {
       case 'cumplida':
-        await marcarComoCumplida(id);
+        await marcarComoCumplida(id, currentUserId);
         mostrarNotificacion('Tarea marcada como cumplida', 'success');
         break;
 
       case 'pendiente':
-        await marcarComoPendiente(id);
+        await marcarComoPendiente(id, currentUserId);
         mostrarNotificacion('Tarea marcada como pendiente', 'info');
         break;
 
@@ -210,7 +210,7 @@ async function manejarAccionTarea(e) {
         // Solicitar contraseña para eliminar tarea pendiente
         const passwordCorrect = await mostrarDialogoContrasena();
         if (passwordCorrect) {
-          await eliminarTarea(id);
+          await eliminarTarea(id, currentUserId);
           mostrarNotificacion('Tarea eliminada', 'warning');
         } else {
           return; // No eliminar si la contraseña es incorrecta o se cancela

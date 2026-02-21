@@ -146,7 +146,11 @@ export function validarTarea(tarea) {
     if (!tarea.fecha) {
         errores.push('La fecha de la tarea es obligatoria');
     } else {
-        const fechaTarea = new Date(tarea.fecha);
+        // CRITICAL: Parse as LOCAL date, not UTC.
+        // new Date('YYYY-MM-DD') parses as UTC midnight, which in Colombia (UTC-5) 
+        // is the previous day at 7PM — causing "today" tasks to fail after 7PM.
+        const [year, month, day] = tarea.fecha.split('-').map(Number);
+        const fechaTarea = new Date(year, month - 1, day); // Local midnight
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
 

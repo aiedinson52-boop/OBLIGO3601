@@ -100,7 +100,7 @@ function renderizarItemCumplido(tarea) {
 
 async function restaurarTarea(id) {
     try {
-        await marcarComoPendiente(id);
+        await marcarComoPendiente(id, currentUserId);
         if (onTaskUpdateCallback) onTaskUpdateCallback();
     } catch (error) {
         console.error('Error restaurando tarea:', error);

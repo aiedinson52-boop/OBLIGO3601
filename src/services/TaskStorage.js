@@ -132,7 +132,7 @@ export async function guardarTarea(tarea, userId = null) {
 
         for (let intento = 1; intento <= MAX_RETRIES; intento++) {
             try {
-                console.log(`[SAVE] 🔄 Intento ${intento}/${MAX_RETRIES} - Guardando en Firestore...`);
+                console.log(`[SAVE] 🔄 Intento ${intento}/${MAX_RETRIES} - Guardando en Firestore para uid: ${targetUid}`);
 
                 const taskRef = doc(db, 'users', targetUid, 'tasks', tarea.id);
                 // Usar setDoc para crear o sobreescribir si ya existe (idempotente)
@@ -171,47 +171,56 @@ export async function guardarTarea(tarea, userId = null) {
 
     // 3. Si no hay usuario (modo local), guardar directamente en IndexedDB
     console.log('[SAVE] ℹ️ Modo offline/local. Guardando en IndexedDB.');
-    return new Promise(async (resolve, reject) => {
-        try {
-            const store = await getLocalStore('readwrite');
+    try {
+        const store = await getLocalStore('readwrite');
+        return await new Promise((resolve, reject) => {
             const request = store.put(tarea);
             request.onsuccess = () => {
                 console.log('[SAVE] ✅ Tarea guardada exitosamente en IndexedDB');
                 resolve(tarea);
             };
             request.onerror = () => reject(new Error('Error al guardar localmente'));
-        } catch (error) {
-            console.error('[SAVE] ❌ Error en guardado local:', error);
-            reject(error);
-        }
-    });
+        });
+    } catch (error) {
+        console.error('[SAVE] ❌ Error en guardado local:', error);
+        throw error;
+    }
 }
 
 /**
  * Obtiene una tarea por ID
+ * @param {string} id - ID de la tarea
+ * @param {string|null} userId - ID del usuario dueño de la tarea (null = usuario actual)
  */
-export async function obtenerTareaPorId(id) {
+export async function obtenerTareaPorId(id, userId = null) {
     if (auth.currentUser) {
         try {
-            const taskRef = doc(db, 'users', auth.currentUser.uid, 'tasks', id);
+            const targetUid = userId || auth.currentUser.uid;
+            const taskRef = doc(db, 'users', targetUid, 'tasks', id);
             const taskSnap = await getDoc(taskRef);
-            return taskSnap.exists() ? taskSnap.data() : null;
+            if (!taskSnap.exists()) {
+                console.warn(`[TaskStorage] Tarea ${id} no encontrada para usuario ${targetUid}`);
+                return null;
+            }
+            return taskSnap.data();
         } catch (error) {
-            console.error("Error obteniendo de Firestore:", error);
+            console.error('[TaskStorage] Error obteniendo tarea de Firestore:', error);
             throw error;
         }
     }
 
-    return new Promise(async (resolve, reject) => {
-        try {
-            const store = await getLocalStore('readonly');
+    // Local mode
+    try {
+        const store = await getLocalStore('readonly');
+        return await new Promise((resolve, reject) => {
             const request = store.get(id);
             request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(new Error('Error local'));
-        } catch (error) {
-            reject(error);
-        }
-    });
+            request.onerror = () => reject(new Error('Error obteniendo tarea localmente'));
+        });
+    } catch (error) {
+        console.error('[TaskStorage] Error obteniendo tarea local:', error);
+        throw error;
+    }
 }
 
 /**
@@ -303,10 +312,18 @@ export async function obtenerTareasPorMes(year, month, userId = null) {
 
 /**
  * Actualiza una tarea
+ * @param {string} id - ID de la tarea
+ * @param {Object} cambios - Campos a actualizar
+ * @param {string|null} userId - ID del usuario dueño (null = usuario actual)
  */
-export async function actualizarTarea(id, cambios) {
-    const tarea = await obtenerTareaPorId(id);
-    if (!tarea) throw new Error('Tarea no encontrada');
+export async function actualizarTarea(id, cambios, userId = null) {
+    console.log(`[TaskStorage] ▶ Actualizando tarea ${id} para usuario: ${userId || 'current'}`);
+
+    const tarea = await obtenerTareaPorId(id, userId);
+    if (!tarea) {
+        console.error(`[TaskStorage] ❌ Tarea ${id} no encontrada para usuario ${userId || auth.currentUser?.uid || 'local'}`);
+        throw new Error('Tarea no encontrada');
+    }
 
     // Si se modifica fecha u hora, recalcular las alertas obligatorias
     if (cambios.fecha || cambios.hora) {
@@ -317,41 +334,51 @@ export async function actualizarTarea(id, cambios) {
     }
 
     const tareaActualizada = { ...tarea, ...cambios, actualizadaEn: new Date().toISOString() };
-    return guardarTarea(tareaActualizada); // guardarTarea maneja la lógica de reemplazo/update
+    return guardarTarea(tareaActualizada, userId); // Pass userId through to save to correct user
 }
 
-export async function marcarComoCumplida(id) {
-    return actualizarTarea(id, { estado: ESTADOS.CUMPLIDA });
+export async function marcarComoCumplida(id, userId = null) {
+    return actualizarTarea(id, { estado: ESTADOS.CUMPLIDA }, userId);
 }
 
-export async function marcarComoPendiente(id) {
-    return actualizarTarea(id, { estado: ESTADOS.PENDIENTE });
+export async function marcarComoPendiente(id, userId = null) {
+    return actualizarTarea(id, { estado: ESTADOS.PENDIENTE }, userId);
 }
 
 /**
  * Elimina una tarea
+ * @param {string} id - ID de la tarea
+ * @param {string|null} userId - ID del usuario dueño (null = usuario actual)
  */
-export async function eliminarTarea(id) {
+export async function eliminarTarea(id, userId = null) {
     if (auth.currentUser) {
         try {
-            await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'tasks', id));
+            const targetUid = userId || auth.currentUser.uid;
+            console.log(`[TaskStorage] 🗑️ Eliminando tarea ${id} de usuario ${targetUid}`);
+            await deleteDoc(doc(db, 'users', targetUid, 'tasks', id));
+            console.log(`[TaskStorage] ✅ Tarea ${id} eliminada exitosamente`);
             return;
         } catch (error) {
-            console.error("Error eliminando de Firestore:", error);
+            console.error('[TaskStorage] ❌ Error eliminando de Firestore:', error);
             throw error;
         }
     }
 
-    return new Promise(async (resolve, reject) => {
-        try {
-            const store = await getLocalStore('readwrite');
+    // Local mode
+    try {
+        const store = await getLocalStore('readwrite');
+        return await new Promise((resolve, reject) => {
             const request = store.delete(id);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(new Error('Error local'));
-        } catch (error) {
-            reject(error);
-        }
-    });
+            request.onsuccess = () => {
+                console.log(`[TaskStorage] ✅ Tarea ${id} eliminada localmente`);
+                resolve();
+            };
+            request.onerror = () => reject(new Error('Error eliminando tarea localmente'));
+        });
+    } catch (error) {
+        console.error('[TaskStorage] ❌ Error eliminando tarea local:', error);
+        throw error;
+    }
 }
 
 
@@ -392,11 +419,10 @@ export async function obtenerTareasConAlertasPendientes() {
     });
 }
 
-export async function marcarAlertaDisparada(tareaId, alertaId) {
-    const tarea = await obtenerTareaPorId(tareaId);
+export async function marcarAlertaDisparada(tareaId, alertaId, userId = null) {
+    const tarea = await obtenerTareaPorId(tareaId, userId);
     if (!tarea) throw new Error('Tarea no encontrada');
 
-    // Mismo código de antes
     const alertasActualizadas = tarea.alertas.map(alerta => {
         if (alerta.id === alertaId) {
             return { ...alerta, disparada: true };
@@ -404,7 +430,7 @@ export async function marcarAlertaDisparada(tareaId, alertaId) {
         return alerta;
     });
 
-    return actualizarTarea(tareaId, { alertas: alertasActualizadas });
+    return actualizarTarea(tareaId, { alertas: alertasActualizadas }, userId);
 }
 
 export async function buscarTareas(texto) {
