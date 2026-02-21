@@ -74,6 +74,13 @@ async function getLocalStore(modo = 'readonly') {
 }
 
 /**
+ * Utility: remove undefined values from an object (Firestore rejects them)
+ */
+function sanitizeForFirestore(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+/**
  * Guarda una tarea
  */
 /**
@@ -136,7 +143,7 @@ export async function guardarTarea(tarea, userId = null) {
 
                 const taskRef = doc(db, 'users', targetUid, 'tasks', tarea.id);
                 // Usar setDoc para crear o sobreescribir si ya existe (idempotente)
-                await setDoc(taskRef, tarea);
+                await setDoc(taskRef, sanitizeForFirestore(tarea));
 
                 // Verificación: leer el documento para confirmar que se persistió
                 const verifySnap = await getDoc(taskRef);
@@ -258,17 +265,18 @@ export async function obtenerTodasLasTareas(filtros = {}) {
             throw error;
         }
     } else {
-        // Local strategy
-        tareas = await new Promise(async (resolve, reject) => {
-            try {
-                const store = await getLocalStore('readonly');
+        // Local strategy — fixed: no async inside Promise constructor
+        try {
+            const store = await getLocalStore('readonly');
+            tareas = await new Promise((resolve, reject) => {
                 const request = store.getAll();
                 request.onsuccess = () => resolve(request.result || []);
                 request.onerror = () => reject(new Error('Error local'));
-            } catch (error) {
-                reject(error);
-            }
-        });
+            });
+        } catch (error) {
+            console.error('[TaskStorage] Error obteniendo tareas locales:', error);
+            throw error;
+        }
     }
 
     // Aplicar TODOS los filtros en memoria
@@ -333,7 +341,11 @@ export async function actualizarTarea(id, cambios, userId = null) {
         console.log('[TaskStorage] Alertas recalculadas para nueva fecha/hora:', nuevaFecha, nuevaHora);
     }
 
-    const tareaActualizada = { ...tarea, ...cambios, actualizadaEn: new Date().toISOString() };
+    // Filter out undefined values — Firestore rejects documents with undefined fields
+    const cambiosLimpios = Object.fromEntries(
+        Object.entries(cambios).filter(([_, v]) => v !== undefined)
+    );
+    const tareaActualizada = { ...tarea, ...cambiosLimpios, actualizadaEn: new Date().toISOString() };
     return guardarTarea(tareaActualizada, userId); // Pass userId through to save to correct user
 }
 

@@ -89,6 +89,13 @@ export function calcularAlertas(fecha, hora) {
     const [horas, minutos] = (hora || '09:00').split(':').map(Number);
     // Parsear fecha + hora como fecha local (no UTC)
     const fechaHoraTarea = new Date(fecha + 'T' + (hora || '09:00') + ':00');
+
+    // Guard against invalid dates — prevents toISOString() crash
+    if (isNaN(fechaHoraTarea.getTime())) {
+        console.warn('[Task] calcularAlertas: fecha/hora inválida:', fecha, hora);
+        return [];
+    }
+
     fechaHoraTarea.setHours(horas, minutos, 0, 0);
 
     const alertas = [];

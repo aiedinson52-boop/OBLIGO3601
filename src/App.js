@@ -7,7 +7,7 @@ import { inicializarCalendario, recargarCalendario, irAHoy } from './components/
 import { inicializarListaTareas, recargarListaTareas, obtenerTareasActuales } from './components/TaskList.js';
 import { inicializarCompletedTaskList, recargarCompletedTaskList } from './components/CompletedTaskList.js';
 import { inicializarBotonVoz, limpiarTranscript, setTranscript } from './components/VoiceButton.js';
-import { inicializarConfirmacion, mostrarConfirmacion } from './components/TaskForm.js';
+import { inicializarConfirmacion, mostrarConfirmacion, estaVisible } from './components/TaskForm.js';
 import { renderLogin } from './components/Login.js';
 
 import { inicializarDB, guardarTarea, obtenerTareasPorFecha, obtenerTareasPendientes } from './services/TaskStorage.js';
@@ -558,6 +558,12 @@ async function procesarComando(comando, textoOriginal) {
  * @param {string} texto - Descripción de la tarea
  */
 async function procesarNuevaTarea(texto) {
+    // Guard: don't create a new task if confirmation dialog is already active
+    if (estaVisible()) {
+        await hablar('Ya hay una tarea pendiente de confirmación. Por favor, confírmela o cancélela primero.');
+        return;
+    }
+
     setTranscript('Procesando...');
 
     // Extraer información de la tarea
