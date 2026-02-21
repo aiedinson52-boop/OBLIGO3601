@@ -138,7 +138,12 @@ export async function guardarTarea(tarea, userId = null) {
                 // Usar setDoc para crear o sobreescribir si ya existe (idempotente)
                 await setDoc(taskRef, tarea);
 
-                console.log(`[SAVE] ✅ ÉXITO en intento ${intento}: Tarea guardada en Firestore`);
+                // Verificación: leer el documento para confirmar que se persistió
+                const verifySnap = await getDoc(taskRef);
+                if (!verifySnap.exists()) {
+                    throw new Error('Verificación fallida: tarea no encontrada después de escribir');
+                }
+                console.log(`[SAVE] ✅ ÉXITO en intento ${intento}: Tarea guardada y verificada en Firestore`);
                 return tarea;
 
             } catch (error) {

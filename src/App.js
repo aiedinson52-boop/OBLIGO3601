@@ -603,28 +603,36 @@ async function procesarNuevaTarea(texto) {
     // Mostrar confirmación (OBLIGATORIO)
     mostrarConfirmacion(nuevaTarea, {
         onConfirm: async (tarea) => {
+            // PASO 1: Guardar tarea (operación crítica)
+            // Errors are caught to show user feedback, then RE-THROWN
+            // so TaskForm keeps the dialog open for retry
             try {
-                // Guardar tarea (asignando al usuario que se está viendo, si aplica)
+                console.log('[APP] ▶ Iniciando guardado de tarea:', tarea.titulo);
                 await guardarTarea(tarea, appState.viewingUserId);
-
-                // Recargar componentes...
-                // Si estamos viendo a otro usuario, recargar SU calendario/lista
-                const userId = appState.viewingUserId;
-                await recargarCalendario(document.getElementById('calendar-container')); // Calendar ya tiene el userId inyectado en su estado? 
-                // Calendar.js tiene estadoCalendario.currentUserId, pero recargarCalendario llama a cargarDatosCalendario que usa ese estado.
-                // Así que solo llamarlo debería funcionar si el estado se mantiene.
-
-                await recargarListaTareas(); // TaskList.js similarmente tiene currentUserId en variable modulo.
-                await recargarCompletedTaskList();
-
-                await hablar('Tarea guardada correctamente.');
-                mostrarNotificacion('Tarea creada con éxito', 'success');
-                limpiarTranscript();
+                console.log('[APP] ✅ guardarTarea() completado sin errores');
             } catch (error) {
-                console.error('Error guardando tarea:', error);
-                await hablar('Hubo un error al guardar la tarea.');
-                mostrarNotificacion('Error al guardar la tarea', 'error');
+                console.error('[APP] ❌ Error REAL guardando tarea:', error);
+                mostrarNotificacion('Error al guardar la tarea. Intente de nuevo.', 'error');
+                await hablar('Hubo un error al guardar la tarea. Por favor intente de nuevo.');
+                throw error; // RE-THROW: TaskForm will catch this and keep dialog open
             }
+
+            // PASO 2: Guardado exitoso — mostrar confirmación (only reaches here if save succeeded)
+            mostrarNotificacion('Tarea creada con éxito', 'success');
+            limpiarTranscript();
+
+            // PASO 3: Refrescar UI (no-crítico — no asustar al usuario si falla)
+            try {
+                await recargarCalendario(document.getElementById('calendar-container'));
+                await recargarListaTareas();
+                await recargarCompletedTaskList();
+                console.log('[APP] ✅ UI refrescada correctamente');
+            } catch (refreshError) {
+                console.warn('[APP] ⚠️ Error refrescando la UI (la tarea SÍ fue guardada):', refreshError);
+                // No mostrar error al usuario — la tarea ya se guardó
+            }
+
+            await hablar('Tarea guardada correctamente.');
         },
         onModify: async (tarea) => {
             await hablar('Por favor, diga nuevamente la tarea con las modificaciones.');

@@ -36,17 +36,29 @@ export const ESTADOS = {
  */
 export function crearTarea(datos) {
     const ahora = new Date();
-    const fechaTarea = datos.fecha instanceof Date ? datos.fecha : new Date(datos.fecha);
+
+    // Preservar la fecha como string YYYY-MM-DD para evitar desplazamiento UTC
+    let fechaStr;
+    if (datos.fecha instanceof Date) {
+        const y = datos.fecha.getFullYear();
+        const m = String(datos.fecha.getMonth() + 1).padStart(2, '0');
+        const d = String(datos.fecha.getDate()).padStart(2, '0');
+        fechaStr = `${y}-${m}-${d}`;
+    } else {
+        fechaStr = datos.fecha; // Ya es string YYYY-MM-DD
+    }
+
+    const horaStr = datos.hora || '09:00';
 
     // Calcular las 3 alertas obligatorias
-    const alertas = calcularAlertas(fechaTarea, datos.hora);
+    const alertas = calcularAlertas(fechaStr, horaStr);
 
     return {
         id: datos.id || generarId(),
         titulo: datos.titulo || '',
         descripcion: datos.descripcion || '',
-        fecha: fechaTarea.toISOString().split('T')[0], // YYYY-MM-DD
-        hora: datos.hora || '09:00',
+        fecha: fechaStr,
+        hora: horaStr,
         contexto: datos.contexto || CONTEXTOS.PERSONAL,
         prioridad: datos.prioridad || PRIORIDADES.MEDIA,
         estado: ESTADOS.PENDIENTE,
@@ -74,8 +86,9 @@ function generarId() {
  * @returns {Array} Array de objetos alerta
  */
 export function calcularAlertas(fecha, hora) {
-    const [horas, minutos] = hora.split(':').map(Number);
-    const fechaHoraTarea = new Date(fecha);
+    const [horas, minutos] = (hora || '09:00').split(':').map(Number);
+    // Parsear fecha + hora como fecha local (no UTC)
+    const fechaHoraTarea = new Date(fecha + 'T' + (hora || '09:00') + ':00');
     fechaHoraTarea.setHours(horas, minutos, 0, 0);
 
     const alertas = [];

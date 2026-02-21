@@ -11,21 +11,40 @@ let onConfirmCallback = null;
 let onModifyCallback = null;
 let onCancelCallback = null;
 let currentTask = null;
+let isSaving = false; // Guard against double-clicks
+let escapeHandler = null; // Track keydown handler to avoid duplicates
 
 /**
  * Inicializa el componente de confirmación
  * @param {HTMLElement} container - Contenedor donde agregar el dialog
  */
 export function inicializarConfirmacion(container) {
-    // Crear el elemento del diálogo
-    dialogElement = document.createElement('div');
-    dialogElement.id = 'confirmation-dialog';
-    dialogElement.className = 'confirmation-dialog';
-    dialogElement.setAttribute('role', 'dialog');
-    dialogElement.setAttribute('aria-modal', 'true');
-    dialogElement.setAttribute('aria-labelledby', 'confirmation-title');
+  // CRITICAL FIX: Remove old dialog and listeners to prevent accumulation
+  if (dialogElement) {
+    dialogElement.remove();
+    dialogElement = null;
+  }
+  if (escapeHandler) {
+    document.removeEventListener('keydown', escapeHandler);
+    escapeHandler = null;
+  }
 
-    dialogElement.innerHTML = `
+  // Reset state
+  isSaving = false;
+  currentTask = null;
+  onConfirmCallback = null;
+  onModifyCallback = null;
+  onCancelCallback = null;
+
+  // Crear el elemento del diálogo
+  dialogElement = document.createElement('div');
+  dialogElement.id = 'confirmation-dialog';
+  dialogElement.className = 'confirmation-dialog';
+  dialogElement.setAttribute('role', 'dialog');
+  dialogElement.setAttribute('aria-modal', 'true');
+  dialogElement.setAttribute('aria-labelledby', 'confirmation-title');
+
+  dialogElement.innerHTML = `
     <div class="confirmation-content">
       <h2 id="confirmation-title" class="confirmation-title">He entendido la siguiente tarea:</h2>
       
@@ -51,26 +70,27 @@ export function inicializarConfirmacion(container) {
     </div>
   `;
 
-    container.appendChild(dialogElement);
+  container.appendChild(dialogElement);
 
-    // Event listeners
-    dialogElement.querySelector('#btn-confirm').addEventListener('click', confirmarTarea);
-    dialogElement.querySelector('#btn-modify').addEventListener('click', modificarTarea);
-    dialogElement.querySelector('#btn-cancel').addEventListener('click', cancelarConfirmacion);
+  // Event listeners — single binding, no duplicates possible
+  dialogElement.querySelector('#btn-confirm').addEventListener('click', confirmarTarea);
+  dialogElement.querySelector('#btn-modify').addEventListener('click', modificarTarea);
+  dialogElement.querySelector('#btn-cancel').addEventListener('click', cancelarConfirmacion);
 
-    // Cerrar al hacer clic fuera
-    dialogElement.addEventListener('click', (e) => {
-        if (e.target === dialogElement) {
-            cancelarConfirmacion();
-        }
-    });
+  // Cerrar al hacer clic fuera (only if not saving)
+  dialogElement.addEventListener('click', (e) => {
+    if (e.target === dialogElement && !isSaving) {
+      cancelarConfirmacion();
+    }
+  });
 
-    // Cerrar con Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && dialogElement.classList.contains('active')) {
-            cancelarConfirmacion();
-        }
-    });
+  // Cerrar con Escape — track handler to remove later
+  escapeHandler = (e) => {
+    if (e.key === 'Escape' && dialogElement && dialogElement.classList.contains('active') && !isSaving) {
+      cancelarConfirmacion();
+    }
+  };
+  document.addEventListener('keydown', escapeHandler);
 }
 
 /**
@@ -79,21 +99,31 @@ export function inicializarConfirmacion(container) {
  * @param {Object} callbacks - Callbacks para las acciones
  */
 export function mostrarConfirmacion(tarea, callbacks = {}) {
-    if (!dialogElement) {
-        console.error('El componente de confirmación no está inicializado');
-        return;
-    }
+  if (!dialogElement) {
+    console.error('El componente de confirmación no está inicializado');
+    return;
+  }
 
-    currentTask = tarea;
-    onConfirmCallback = callbacks.onConfirm || null;
-    onModifyCallback = callbacks.onModify || null;
-    onCancelCallback = callbacks.onCancel || null;
+  // Reset saving state for new task
+  isSaving = false;
 
-    // Llenar los detalles
-    const detailsContainer = dialogElement.querySelector('#confirmation-details');
-    const fecha = new Date(tarea.fecha + 'T12:00:00');
+  currentTask = tarea;
+  onConfirmCallback = callbacks.onConfirm || null;
+  onModifyCallback = callbacks.onModify || null;
+  onCancelCallback = callbacks.onCancel || null;
 
-    detailsContainer.innerHTML = `
+  // Reset confirm button state
+  const confirmBtn = dialogElement.querySelector('#btn-confirm');
+  if (confirmBtn) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = '✓ Confirmar';
+  }
+
+  // Llenar los detalles
+  const detailsContainer = dialogElement.querySelector('#confirmation-details');
+  const fecha = new Date(tarea.fecha + 'T12:00:00');
+
+  detailsContainer.innerHTML = `
     <div class="confirmation-row">
       <span class="confirmation-label">Tarea:</span>
       <span class="confirmation-value">${escapeHtml(tarea.titulo)}</span>
@@ -120,53 +150,108 @@ export function mostrarConfirmacion(tarea, callbacks = {}) {
     </div>
   `;
 
-    // Mostrar el diálogo
-    dialogElement.classList.add('active');
+  // Mostrar el diálogo
+  dialogElement.classList.add('active');
 
-    // Focus en el botón de confirmar
-    setTimeout(() => {
-        dialogElement.querySelector('#btn-confirm').focus();
-    }, 100);
+  // Focus en el botón de confirmar
+  setTimeout(() => {
+    if (confirmBtn) confirmBtn.focus();
+  }, 100);
 }
 
 /**
  * Cierra el diálogo de confirmación
  */
 export function cerrarConfirmacion() {
-    if (dialogElement) {
-        dialogElement.classList.remove('active');
-        currentTask = null;
-    }
+  if (dialogElement) {
+    dialogElement.classList.remove('active');
+  }
+  // NOTE: currentTask is NOT nullified here anymore.
+  // It is only cleared explicitly after save completes or on cancel/modify.
 }
 
 /**
  * Manejador para confirmar la tarea
+ * CRITICAL FIX: Now async — awaits save before closing
  */
-function confirmarTarea() {
-    if (onConfirmCallback && currentTask) {
-        onConfirmCallback(currentTask);
-    }
+async function confirmarTarea() {
+  // Double-click guard
+  if (isSaving) {
+    console.warn('[TaskForm] ⚠️ Save already in progress, ignoring duplicate click');
+    return;
+  }
+
+  if (!onConfirmCallback || !currentTask) {
+    console.error('[TaskForm] ❌ No callback or task available');
+    return;
+  }
+
+  // Lock the UI
+  isSaving = true;
+  const confirmBtn = dialogElement.querySelector('#btn-confirm');
+  const cancelBtn = dialogElement.querySelector('#btn-cancel');
+  const modifyBtn = dialogElement.querySelector('#btn-modify');
+
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '⏳ Guardando...';
+  }
+  if (cancelBtn) cancelBtn.disabled = true;
+  if (modifyBtn) modifyBtn.disabled = true;
+
+  // Capture task and callback BEFORE any async operation
+  const taskToSave = currentTask;
+  const callback = onConfirmCallback;
+
+  try {
+    console.log('[TaskForm] ▶ Starting save via onConfirm callback...');
+    await callback(taskToSave);
+    console.log('[TaskForm] ✅ Save callback completed successfully');
+
+    // Only clear state AFTER successful save
+    currentTask = null;
+    onConfirmCallback = null;
     cerrarConfirmacion();
+
+  } catch (error) {
+    console.error('[TaskForm] ❌ Save callback threw error:', error);
+
+    // Re-enable buttons so user can retry or cancel
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '✓ Reintentar';
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (modifyBtn) modifyBtn.disabled = false;
+
+    // Dialog stays open — user can retry
+  } finally {
+    isSaving = false;
+  }
 }
 
 /**
  * Manejador para modificar la tarea
  */
 function modificarTarea() {
-    if (onModifyCallback && currentTask) {
-        onModifyCallback(currentTask);
-    }
-    cerrarConfirmacion();
+  if (isSaving) return; // Don't allow modify during save
+  if (onModifyCallback && currentTask) {
+    onModifyCallback(currentTask);
+  }
+  currentTask = null;
+  cerrarConfirmacion();
 }
 
 /**
  * Manejador para cancelar la confirmación
  */
 function cancelarConfirmacion() {
-    if (onCancelCallback) {
-        onCancelCallback();
-    }
-    cerrarConfirmacion();
+  if (isSaving) return; // Don't allow cancel during save
+  if (onCancelCallback) {
+    onCancelCallback();
+  }
+  currentTask = null;
+  cerrarConfirmacion();
 }
 
 /**
@@ -175,12 +260,12 @@ function cancelarConfirmacion() {
  * @returns {string} Ícono
  */
 function getPrioridadIcon(prioridad) {
-    const iconos = {
-        'alta': '🔴',
-        'media': '🟡',
-        'baja': '🟢'
-    };
-    return iconos[prioridad] || '⚪';
+  const iconos = {
+    'alta': '🔴',
+    'media': '🟡',
+    'baja': '🟢'
+  };
+  return iconos[prioridad] || '⚪';
 }
 
 /**
@@ -189,12 +274,12 @@ function getPrioridadIcon(prioridad) {
  * @returns {string} Ícono
  */
 function getContextoIcon(contexto) {
-    const iconos = {
-        'trabajo': '💼',
-        'personal': '👤',
-        'familiar': '👨‍👩‍👧‍👦'
-    };
-    return iconos[contexto] || '📋';
+  const iconos = {
+    'trabajo': '💼',
+    'personal': '👤',
+    'familiar': '👨‍👩‍👧‍👦'
+  };
+  return iconos[contexto] || '📋';
 }
 
 /**
@@ -203,9 +288,9 @@ function getContextoIcon(contexto) {
  * @returns {string} String escapado
  */
 function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 /**
@@ -213,5 +298,5 @@ function escapeHtml(str) {
  * @returns {boolean} true si está visible
  */
 export function estaVisible() {
-    return dialogElement && dialogElement.classList.contains('active');
+  return dialogElement && dialogElement.classList.contains('active');
 }
