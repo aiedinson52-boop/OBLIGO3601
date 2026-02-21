@@ -74,125 +74,63 @@ async function getLocalStore(modo = 'readonly') {
 }
 
 /**
- * Utility: remove undefined values from an object (Firestore rejects them)
+ * Utility: remove undefined values from an object (Firestore rejects them).
+ * Traverses recursively to handle nested objects (e.g., alertas array).
  */
 function sanitizeForFirestore(obj) {
-    return JSON.parse(JSON.stringify(obj));
+    if (Array.isArray(obj)) {
+        return obj.map(sanitizeForFirestore);
+    }
+    if (obj !== null && typeof obj === 'object') {
+        return Object.fromEntries(
+            Object.entries(obj)
+                .filter(([, v]) => v !== undefined)
+                .map(([k, v]) => [k, sanitizeForFirestore(v)])
+        );
+    }
+    return obj;
 }
 
 /**
  * Guarda una tarea
  */
-/**
- * Traduce un código de error de Firestore a un mensaje amigable
- */
-function traducirErrorFirestore(error) {
-    const mensajes = {
-        'permission-denied': 'No tiene permisos para guardar. Verifique su sesión.',
-        'unavailable': 'Servicio no disponible. Guardado localmente.',
-        'deadline-exceeded': 'Tiempo de espera agotado. Guardado localmente.',
-        'resource-exhausted': 'Cuota de Firestore agotada. Guardado localmente.',
-        'unauthenticated': 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-        'not-found': 'Colección no encontrada. Contacte soporte.',
-        'already-exists': 'La tarea ya existe.',
-        'cancelled': 'Operación cancelada. Intente de nuevo.',
-        'data-loss': 'Error de datos. Guardado localmente.',
-        'internal': 'Error interno del servidor. Guardado localmente.',
-        'failed-precondition': 'Condición previa fallida. Guardado localmente.'
-    };
-    return mensajes[error.code] || `Error inesperado (${error.code || 'desconocido'}). Guardado localmente.`;
-}
+
 
 /**
- * Guarda una tarea en IndexedDB como pendiente de sincronización
- */
-async function guardarTareaPendienteSync(tarea) {
-    try {
-        const tareaPendiente = { ...tarea, _syncPending: true, _pendingSince: new Date().toISOString() };
-        const store = await getLocalStore('readwrite');
-        const request = store.put(tareaPendiente);
-
-        return new Promise((resolve, reject) => {
-            request.onsuccess = () => {
-                console.log('[SAVE] 💾 Tarea guardada localmente (pendiente de sync):', tarea.titulo);
-                resolve(tareaPendiente);
-            };
-            request.onerror = () => reject(new Error('Error al guardar pendiente localmente'));
-        });
-    } catch (error) {
-        console.error('[SAVE] ❌ Error guardando fallback en IndexedDB:', error);
-        throw error;
-    }
-}
-
-/**
- * Guarda una tarea con reintentos y fallback
+ * Guarda una tarea en Firestore.
+ * Con la persistencia habilitada, Firestore gestiona automáticamente los reintentos y la cola offline.
  */
 export async function guardarTarea(tarea, userId = null) {
-    console.log('[SAVE] ▶ Iniciando guardado de tarea (TaskStorage):', tarea.titulo || '(sin título)');
+    console.log('[SAVE] ▶ Iniciando guardado de tarea:', tarea.titulo || '(sin título)');
 
-    // 1. Si hay usuario logueado, intentar Firestore con reintentos
-    if (auth.currentUser) {
-        const MAX_RETRIES = 3;
-        const BACKOFF_MS = [500, 1000, 2000];
-        const targetUid = userId || auth.currentUser.uid;
-
-        for (let intento = 1; intento <= MAX_RETRIES; intento++) {
-            try {
-                console.log(`[SAVE] 🔄 Intento ${intento}/${MAX_RETRIES} - Guardando en Firestore para uid: ${targetUid}`);
-
-                const taskRef = doc(db, 'users', targetUid, 'tasks', tarea.id);
-                // Usar setDoc para crear o sobreescribir si ya existe (idempotente)
-                await setDoc(taskRef, sanitizeForFirestore(tarea));
-
-                // Verificación: leer el documento para confirmar que se persistió
-                const verifySnap = await getDoc(taskRef);
-                if (!verifySnap.exists()) {
-                    throw new Error('Verificación fallida: tarea no encontrada después de escribir');
-                }
-                console.log(`[SAVE] ✅ ÉXITO en intento ${intento}: Tarea guardada y verificada en Firestore`);
-                return tarea;
-
-            } catch (error) {
-                console.error(`[SAVE] ❌ Intento ${intento}/${MAX_RETRIES} falló:`, error.code || 'unknown', error.message);
-
-                // Errores permanentes: no reintentar
-                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                    console.error('[SAVE] 🚫 Error permanente - no se reintentará');
-                    throw error; // Re-lanzar para que la UI muestre error específico
-                }
-
-                // Errores transitorios: esperar y reintentar
-                if (intento < MAX_RETRIES) {
-                    const delay = BACKOFF_MS[intento - 1] || 2000;
-                    console.log(`[SAVE] ⏳ Esperando ${delay}ms antes del siguiente intento...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-        }
-
-        // 2. Si fallan todos los reintentos, usar Fallback (IndexedDB)
-        console.warn('[SAVE] ⚠️ Todos los intentos de Firestore fallaron. Guardando localmente...');
-        return await guardarTareaPendienteSync(tarea);
-    }
-
-    // 3. Si no hay usuario (modo local), guardar directamente en IndexedDB
-    console.log('[SAVE] ℹ️ Modo offline/local. Guardando en IndexedDB.');
-    try {
+    if (!auth.currentUser) {
+        console.warn('[SAVE] ⚠️ No hay usuario autenticado. Guardando en IndexedDB local.');
         const store = await getLocalStore('readwrite');
         return await new Promise((resolve, reject) => {
             const request = store.put(tarea);
-            request.onsuccess = () => {
-                console.log('[SAVE] ✅ Tarea guardada exitosamente en IndexedDB');
-                resolve(tarea);
-            };
+            request.onsuccess = () => resolve(tarea);
             request.onerror = () => reject(new Error('Error al guardar localmente'));
         });
+    }
+
+    const targetUid = userId || auth.currentUser.uid;
+    console.log(`[SAVE] 🔑 Usuario autenticado: ${auth.currentUser.email} (uid: ${targetUid})`);
+
+    try {
+        const taskRef = doc(db, 'users', targetUid, 'tasks', tarea.id);
+        const tareaLimpia = sanitizeForFirestore(tarea);
+
+        // setDoc encola la escritura localmente de inmediato y sincroniza cuando hay red
+        await setDoc(taskRef, tareaLimpia);
+
+        console.log(`[SAVE] ✅ Tarea "${tarea.titulo}" guardada/encolada en Firestore para: ${targetUid}`);
+        return tarea;
     } catch (error) {
-        console.error('[SAVE] ❌ Error en guardado local:', error);
+        console.error('[SAVE] ❌ Error al guardar en Firestore — código:', error.code, '| mensaje:', error.message);
         throw error;
     }
 }
+
 
 /**
  * Obtiene una tarea por ID

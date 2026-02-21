@@ -1,7 +1,11 @@
 // Configuración de Firebase
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager
+} from 'firebase/firestore';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAIysupp_PUY-EqiBx52CSW5sJP632xA-A",
@@ -18,7 +22,22 @@ const app = initializeApp(firebaseConfig);
 
 // Inicializar servicios
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Firebase SDK v10: la persistencia offline se configura DENTRO de initializeFirestore
+// mediante persistentLocalCache (reemplaza a la antigua enableIndexedDbPersistence)
+let db;
+try {
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
+    });
+    console.log('[Firebase] ✅ Firestore con persistencia offline habilitada (multi-tab)');
+} catch (e) {
+    // Fallback: sin persistencia si el navegador no soporta IndexedDB o ya fue inicializado
+    console.warn('[Firebase] ⚠️ Iniciando Firestore sin persistencia offline:', e.message);
+    db = initializeFirestore(app, {});
+}
 
 export { auth, db, firebaseConfig };
 
