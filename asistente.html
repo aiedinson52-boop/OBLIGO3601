@@ -1163,6 +1163,7 @@
 
                     renderizarCalendario();
                     renderizarListaTareas();
+                    renderizarListaCumplidas();
                     if (window.checkAlarms) checkAlarms();
                 }, (error) => {
                     console.error('❌ Error en sincronización de tareas:', error);
@@ -1322,10 +1323,21 @@
                 try {
                     console.log(`[SAVE] 🔄 Intento ${intento}/${MAX_RETRIES} - Guardando en Firestore...`);
 
-                    await db.collection('users')
+                    const docRef = await db.collection('users')
                         .doc(currentUser.uid)
                         .collection('tasks')
                         .add(nuevaTarea);
+
+                    // Replace temp ID with Firestore-generated ID immediately
+                    // This prevents edit/delete failures when user acts on the task before onSnapshot fires
+                    const idxSync = appState.tareas.findIndex(t => t.id === tempId);
+                    if (idxSync > -1) {
+                        appState.tareas[idxSync].id = docRef.id;
+                        guardarTareas();
+                        renderizarListaTareas();
+                        renderizarListaCumplidas();
+                        console.log(`[SAVE] 🔗 ID temporal '${tempId}' reemplazado por Firestore ID '${docRef.id}'`);
+                    }
 
                     console.log(`[SAVE] ✅ ÉXITO en intento ${intento}: Tarea guardada en Firestore`);
                     return true;
@@ -1379,19 +1391,30 @@
          * Actualiza una tarea existente en Firestore
          */
         async function actualizarTarea(id, cambios) {
-            if (!currentUser || !id) return false;
+            if (!currentUser || !db || !id) return false;
+
+            // Update local state immediately for responsive UI
+            const tareaLocal = appState.tareas.find(t => t.id === id);
+            const cambiosConTimestamp = { ...cambios };
+            if (!cambiosConTimestamp.actualizadaEn) {
+                cambiosConTimestamp.actualizadaEn = new Date().toISOString();
+            }
+
+            if (tareaLocal) {
+                Object.assign(tareaLocal, cambiosConTimestamp);
+                guardarTareas();
+            }
 
             try {
                 await db.collection('users')
                     .doc(currentUser.uid)
                     .collection('tasks')
                     .doc(id)
-                    .update(cambios);
+                    .update(cambiosConTimestamp);
                 console.log(`✅ Tarea actualizada: ${id}`);
                 return true;
             } catch (error) {
                 console.error('Error actualizando tarea:', error);
-                // No mostrar toast aquí para permitir que el llamador maneje el UI
                 return false;
             }
         }
@@ -3724,20 +3747,60 @@
         // ACCIONES DE TAREAS
         // ============================================================================
 
-        window.marcarCumplida = function (id) {
-            actualizarTarea(id, { estado: 'Cumplida' });
+        window.marcarCumplida = async function (id) {
+            // Optimistic UI: update local state immediately
+            const tarea = appState.tareas.find(t => t.id === id);
+            const estadoAnterior = tarea ? tarea.estado : 'Pendiente';
+            if (tarea) {
+                tarea.estado = 'Cumplida';
+                tarea.actualizadaEn = new Date().toISOString();
+            }
             renderizarListaTareas();
             renderizarListaCumplidas();
             renderizarCalendario();
-            mostrarToast('Tarea marcada como cumplida', 'success');
+
+            const exito = await actualizarTarea(id, { estado: 'Cumplida' });
+            if (exito) {
+                mostrarToast('Tarea marcada como cumplida', 'success');
+            } else {
+                // Revert optimistic update on failure
+                if (tarea) {
+                    tarea.estado = estadoAnterior;
+                    delete tarea.actualizadaEn;
+                }
+                renderizarListaTareas();
+                renderizarListaCumplidas();
+                renderizarCalendario();
+                mostrarToast('Error al actualizar la tarea. Intente de nuevo.', 'error');
+            }
         };
 
-        window.marcarPendiente = function (id) {
-            actualizarTarea(id, { estado: 'Pendiente' });
+        window.marcarPendiente = async function (id) {
+            // Optimistic UI: update local state immediately
+            const tarea = appState.tareas.find(t => t.id === id);
+            const estadoAnterior = tarea ? tarea.estado : 'Cumplida';
+            if (tarea) {
+                tarea.estado = 'Pendiente';
+                tarea.actualizadaEn = new Date().toISOString();
+            }
             renderizarListaTareas();
             renderizarListaCumplidas();
             renderizarCalendario();
-            mostrarToast('Tarea marcada como pendiente', 'info');
+
+            const exito = await actualizarTarea(id, { estado: 'Pendiente' });
+            if (exito) {
+                mostrarToast('Tarea marcada como pendiente', 'info');
+            } else {
+                // Revert optimistic update on failure
+                if (tarea) {
+                    tarea.estado = estadoAnterior;
+                    delete tarea.actualizadaEn;
+                }
+                renderizarListaTareas();
+                renderizarListaCumplidas();
+                renderizarCalendario();
+                mostrarToast('Error al actualizar la tarea. Intente de nuevo.', 'error');
+            }
         };
 
         window.eliminarTarea = async function (id) {
