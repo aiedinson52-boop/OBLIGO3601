@@ -1,11 +1,3 @@
-/**
- * API Route: Voice Transcription
- * Recibe audio en base64 y lo envía a Deepgram para transcripción
- * 
- * Nota: Vercel Serverless no soporta WebSockets nativos,
- * por lo que usamos REST con audio chunks acumulados
- */
-
 export const config = {
     api: {
         bodyParser: {
@@ -36,10 +28,16 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { audio, mimeType = 'audio/webm' } = req.body;
+        const { audio, mimeType } = req.body;
 
         if (!audio) {
             return res.status(400).json({ error: 'No audio data provided' });
+        }
+
+        // Normalizar mimeType
+        let cleanMimeType = mimeType || 'audio/webm';
+        if (cleanMimeType.includes(';')) {
+            cleanMimeType = cleanMimeType.split(';')[0];
         }
 
         // Decodificar audio de base64
@@ -56,7 +54,7 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: {
                 'Authorization': `Token ${apiKey}`,
-                'Content-Type': mimeType
+                'Content-Type': cleanMimeType
             },
             body: audioBuffer
         });
@@ -65,7 +63,8 @@ export default async function handler(req, res) {
             const errorText = await response.text();
             console.error('[voice-transcribe] Deepgram error:', errorText);
             return res.status(response.status).json({
-                error: 'Transcription failed',
+                success: false,
+                error: 'Deepgram transcription failed',
                 details: errorText
             });
         }
@@ -76,16 +75,25 @@ export default async function handler(req, res) {
         const transcript = result.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
         const confidence = result.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0;
 
+        if (!transcript) {
+            return res.status(400).json({
+                success: false,
+                error: 'No speech detected in audio'
+            });
+        }
+
         return res.status(200).json({
             success: true,
             transcript,
             confidence,
-            language: 'es-CO'
+            language: 'es-CO',
+            method: 'deepgram'
         });
 
     } catch (error) {
         console.error('[voice-transcribe] Error:', error);
         return res.status(500).json({
+            success: false,
             error: 'Internal server error',
             message: error.message
         });

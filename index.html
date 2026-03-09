@@ -1441,23 +1441,12 @@
          */
         async function sincronizarHoraOficial() {
             try {
-                // Usar nuestro nuevo endpoint interno que es 100% confiable
-                const response = await fetch('/api/time');
-                if (!response.ok) throw new Error('Error de red');
-
-                const data = await response.json();
-                const serverTime = data.unixtime * 1000; // Convertir a milisegundos
-                const localTime = Date.now();
-
-                timeOffset = serverTime - localTime;
-                isSynced = true;
-                lastSyncTime = localTime;
-
-                console.log('✅ Hora Legal de Colombia sincronizada (Servidor). Offset:', timeOffset, 'ms');
+                // Se utiliza directamente el cálculo local UTC-5 para evitar 
+                // dependencias de red (y errores 404/CORS), garantizando 100% confiabilidad en Vercel
+                isSynced = false;
+                lastSyncTime = Date.now();
                 return true;
             } catch (error) {
-                console.error('❌ Error sincronizando hora con servidor:', error);
-                // Fallback: usar zona horaria America/Bogota localmente
                 return false;
             }
         }
@@ -2913,8 +2902,8 @@
             if (!SpeechRecognitionAPI) return null;
             const rec = new SpeechRecognitionAPI();
             rec.lang = 'es-CO';
-            rec.continuous = false;
-            rec.interimResults = true;
+            rec.continuous = true;        // Evita que se apague automáticamente con pausas cortas
+            rec.interimResults = true;    // Muestra resultados parciales en tiempo real
             rec.maxAlternatives = 1;
             return rec;
         }
@@ -2926,16 +2915,32 @@
 
                 recognition = rec;
                 let finalTranscript = '';
+                let interimTranscript = '';
                 let hasResult = false;
+                let silenceTimeout = null;
+                const SILENCE_MS = 2500; // 2.5 segundos de silencio para finalizar automáticamente
 
                 const btn = document.getElementById('voice-button');
                 const header = document.getElementById('transcript-header');
                 const el = document.getElementById('transcript');
 
+                const stopOnSilence = () => {
+                    if (usingSpeechAPI && recognition) {
+                        try { recognition.stop(); } catch (e) { }
+                    }
+                };
+
+                const resetSilenceTimeout = () => {
+                    if (silenceTimeout) clearTimeout(silenceTimeout);
+                    silenceTimeout = setTimeout(stopOnSilence, SILENCE_MS);
+                };
+
                 rec.onstart = () => {
                     console.log('[VOZ] SpeechRecognition iniciado');
                     appState.isListening = true;
                     usingSpeechAPI = true;
+                    resetSilenceTimeout();
+
                     if (btn) btn.classList.add('listening');
                     if (header) {
                         header.style.display = 'block';
@@ -2944,31 +2949,40 @@
                         header.style.padding = '10px';
                         header.style.borderRadius = '10px';
                     }
-                    if (el) el.innerHTML = '<span style="color: #69F0AE; font-weight:bold;">🎤 Escuchando... (Toca para detener)</span>';
+                    if (el) el.innerHTML = '<span style="color: #69F0AE; font-weight:bold;">🎤 Escuchando... (Hable ahora)</span>';
                 };
 
                 rec.onresult = (event) => {
-                    let interim = '';
+                    interimTranscript = '';
                     finalTranscript = '';
                     for (let i = 0; i < event.results.length; i++) {
                         const result = event.results[i];
-                        if (result.isFinal) { finalTranscript += result[0].transcript; hasResult = true; }
-                        else { interim += result[0].transcript; }
+                        if (result.isFinal) {
+                            finalTranscript += result[0].transcript;
+                            hasResult = true;
+                        } else {
+                            interimTranscript += result[0].transcript;
+                            hasResult = true;
+                        }
                     }
-                    const displayText = finalTranscript || interim;
+
+                    resetSilenceTimeout();
+
+                    const displayText = finalTranscript || interimTranscript;
                     if (displayText && el) {
                         el.innerHTML = `<span style="color: ${finalTranscript ? '#fff' : '#90CAF9'};">${displayText}</span>`;
                     }
                 };
 
                 rec.onerror = (event) => {
+                    if (silenceTimeout) clearTimeout(silenceTimeout);
                     console.error('[VOZ] SpeechRecognition error:', event.error);
                     appState.isListening = false;
                     usingSpeechAPI = false;
                     if (btn) btn.classList.remove('listening');
 
                     const errorMessages = {
-                        'no-speech': 'No se detectó voz. Hable más fuerte e intente de nuevo.',
+                        'no-speech': 'No se detectó voz. Verifique que su micrófono funcione y hable fuerte.',
                         'audio-capture': 'No se pudo acceder al micrófono. Verifique los permisos.',
                         'not-allowed': 'El acceso al micrófono fue denegado. Habilítelo en configuración.',
                         'network': 'Error de red. Verifique su conexión a internet.',
@@ -2985,24 +2999,27 @@
                         return;
                     }
 
-                    mostrarToast(msg, 'error');
+                    mostrarToast(msg, 'warning');
                     if (el) el.innerHTML = `<span style="color: #fca5a5;">${msg}</span>`;
                     setTimeout(() => { if (header) header.style.display = 'none'; }, 4000);
                     reject(new Error(msg));
                 };
 
                 rec.onend = () => {
+                    if (silenceTimeout) clearTimeout(silenceTimeout);
                     console.log('[VOZ] SpeechRecognition finalizado');
                     appState.isListening = false;
                     usingSpeechAPI = false;
                     if (btn) btn.classList.remove('listening');
 
-                    if (hasResult && finalTranscript.trim()) {
-                        console.log(`[VOZ] ✅ Transcripción: "${finalTranscript}"`);
-                        if (el) el.innerHTML = `<span style="color: #fff;">${finalTranscript}</span>`;
+                    const resultText = (finalTranscript || interimTranscript).trim();
+
+                    if (hasResult && resultText) {
+                        console.log(`[VOZ] ✅ Transcripción: "${resultText}"`);
+                        if (el) el.innerHTML = `<span style="color: #fff;">${resultText}</span>`;
                         setTimeout(() => { if (header) header.style.display = 'none'; }, 2500);
-                        procesarTranscripcion(finalTranscript.trim());
-                        resolve(finalTranscript.trim());
+                        procesarTranscripcion(resultText);
+                        resolve(resultText);
                     } else if (!hasResult) {
                         const msg = 'No se detectó voz. Intente de nuevo hablando más claro.';
                         mostrarToast(msg, 'warning');
