@@ -3170,9 +3170,9 @@
 
         // Detectar soporte de Web Speech API
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const speechAPIAvailable = false; // Forzado a false para usar siempre el fallback más robusto (MediaRecorder + Backend Deepgram)
+        const speechAPIAvailable = !!SpeechRecognitionAPI;
 
-        console.log(`[VOZ] Web Speech API disponible: ${!!SpeechRecognitionAPI} (pero forzado a false para asegurar el backend)`);
+        console.log(`[VOZ] Web Speech API disponible: ${speechAPIAvailable}`);
 
         // --- Variables para fallback MediaRecorder ---
         let audioStream = null;
@@ -3190,7 +3190,7 @@
 
             const rec = new SpeechRecognitionAPI();
             rec.lang = 'es-CO';
-            rec.continuous = true;        // Evita que se apague automáticamente con pausas cortas
+            rec.continuous = false;       // En Android/Chrome usar continuous=true puede causar error "no-speech" inmediato
             rec.interimResults = true;    // Muestra resultados parciales en tiempo real
             rec.maxAlternatives = 1;
 
