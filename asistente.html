@@ -3168,12 +3168,11 @@
         let recognition = null;
         let usingSpeechAPI = false; // true = Web Speech API, false = MediaRecorder fallback
 
-        // Detectar soporte de Web Speech API
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        // Restaurado Web Speech API porque es nativo, gratuito y muy estable en Chrome Escritorio
-        const speechAPIAvailable = !!SpeechRecognitionAPI;
+        // Obligado 100% a Nube: Garantiza funcionamiento universal en PC y Móvil sin depender del inestable motor nativo
+        const speechAPIAvailable = false;
 
-        console.log(`[VOZ] Web Speech API disponible: ${speechAPIAvailable}`);
+        console.log(`[VOZ] Web Speech API disponible: ${!!SpeechRecognitionAPI} (Forzado a backend)`);
 
         // --- Variables para fallback MediaRecorder ---
         let audioStream = null;
