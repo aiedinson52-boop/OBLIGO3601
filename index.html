@@ -3123,19 +3123,23 @@
                                 body: audioBlob // Raw body Blob
                             });
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || 'Falló el API');
+                            if (!res.ok) throw new Error(data.details || data.error || 'Falló el API al procesar audio');
                             if (data.success && data.transcript) {
                                 if (el) el.innerHTML = `<span style="color: #fff;">${data.transcript}</span>`;
                                 setTimeout(() => { if (header) header.style.display = 'none'; }, 2500);
                                 procesarTranscripcion(data.transcript);
                             } else {
-                                throw new Error('Voz no detectada o vacía');
+                                throw new Error('El micrófono grabó estática o está mal configurado. Por favor revíselo.');
                             }
                         } catch (error) {
                             console.error('Error de transcripción (fallback):', error);
-                            mostrarToast(error.message || 'No se pudo procesar tu voz', 'error');
-                            if (el) el.innerHTML = '<span style="color: #fca5a5;">No se pudo entender. Intente de nuevo.</span>';
-                            setTimeout(() => { if (header) header.style.display = 'none'; }, 4000);
+                            let userErrorMsg = error.message;
+                            if (userErrorMsg.includes('alucinación') || userErrorMsg.includes('estática')) {
+                                userErrorMsg = 'Micrófono en silencio o mal configurado en Windows/Chrome.';
+                            }
+                            mostrarToast(userErrorMsg, 'error');
+                            if (el) el.innerHTML = `<span style="color: #fca5a5;">${userErrorMsg}</span>`;
+                            setTimeout(() => { if (header) header.style.display = 'none'; }, 5500);
                         }
                     };
                     reader.readAsDataURL(audioBlob);

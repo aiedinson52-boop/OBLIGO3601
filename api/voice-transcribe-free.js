@@ -93,12 +93,21 @@ export default async function handler(req, res) {
 
                 if (hfRes.ok) {
                     const hfData = await hfRes.json();
-                    transcript = hfData.text || '';
+                    let rawTranscript = hfData.text || '';
+
+                    // Filtrar alucinaciones comunes de Whisper que se producen cuando el micrófono envía estática o silencio total
+                    const halluz = ['you', 'you.', 'thank you', 'thank you.', 'gracias', 'gracias.', 'subtitles by amara.org', 'sí', 'sí.', 'hola', 'hola.', 'bueno', 'bueno.'];
+                    if (halluz.includes(rawTranscript.trim().toLowerCase())) {
+                        console.warn('[voice-transcribe-free] Micrófono parece captar silencio/ruido. Whisper alucinó: ' + rawTranscript);
+                        rawTranscript = '';
+                    }
+
+                    transcript = rawTranscript;
                     if (transcript) {
                         console.log(`[voice-transcribe-free] Éxito con Hugging Face: "${transcript}"`);
                         return res.status(200).json({ success: true, transcript, method: 'huggingface' });
                     } else {
-                        errors.push('HuggingFace: Empty transcript');
+                        errors.push('HuggingFace: Micrófono inactivo, ruido blanco detectado o pista vacía (alucinación de Whisper suprimida).');
                     }
                 } else {
                     let errText = 'Desconocido';
