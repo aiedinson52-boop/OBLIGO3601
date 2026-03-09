@@ -7,7 +7,7 @@
  * el sonido del sistema incluso en segundo plano.
  */
 
-const CACHE_NAME = 'obligo360-v2';
+const CACHE_NAME = 'obligo360-v3';
 const STATIC_ASSETS = [
     '/',
     '/asistente.html',
@@ -18,7 +18,7 @@ const STATIC_ASSETS = [
 
 // Instalación - Cachear recursos estáticos
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing v2...');
+    console.log('[SW] Installing v3...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -31,7 +31,7 @@ self.addEventListener('install', (event) => {
 
 // Activación - Limpiar caches antiguos
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating v2...');
+    console.log('[SW] Activating v3...');
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
