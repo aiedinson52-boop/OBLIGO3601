@@ -3519,20 +3519,8 @@
         }
 
         async function iniciarReconocimientoVoz() {
-            if (speechAPIAvailable) {
-                // ESTRATEGIA PRIMARIA: Web Speech API (gratuita)
-                console.log('[VOZ] 🎤 Usando Web Speech API (gratuita, sin backend)');
-                try {
-                    await iniciarConSpeechAPI();
-                } catch (err) {
-                    console.warn('[VOZ] SpeechAPI falló:', err.message);
-                    // No hacer nada más, el error ya fue manejado en onerror/onend
-                }
-            } else {
-                // FALLBACK: MediaRecorder + Backend
-                console.log('[VOZ] 📡 Usando MediaRecorder + Backend (fallback)');
-                await iniciarConMediaRecorderFallback();
-            }
+            console.log('[VOZ] 📡 Usando MediaRecorder + Backend (fallback) de manera forzada');
+            await iniciarConMediaRecorderFallback();
         }
 
         function detenerGrabacion() {
