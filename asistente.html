@@ -3170,9 +3170,9 @@
 
         // Detectar soporte de Web Speech API
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const speechAPIAvailable = !!SpeechRecognitionAPI;
+        const speechAPIAvailable = false; // FORZADO A FALSE: Varios dispositivos Android fallan en Web Speech API. Esto fuerza el uso de MediaRecorder (Modo Nube)
 
-        console.log(`[VOZ] Web Speech API disponible: ${speechAPIAvailable}`);
+        console.log(`[VOZ] Web Speech API disponible: ${!!SpeechRecognitionAPI} (Forzado a backend)`);
 
         // --- Variables para fallback MediaRecorder ---
         let audioStream = null;

@@ -2885,9 +2885,9 @@
         let usingSpeechAPI = false;
 
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const speechAPIAvailable = !!SpeechRecognitionAPI;
+        const speechAPIAvailable = false; // FORZADO A FALSE: Omitir nativo porque falla en Android, forzar Vercel backend
 
-        console.log(`[VOZ] Web Speech API disponible: ${speechAPIAvailable}`);
+        console.log(`[VOZ] Web Speech API disponible: ${!!SpeechRecognitionAPI} (Forzado a backend)`);
 
         let audioStream = null;
         let microphoneInitialized = false;
