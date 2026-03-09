@@ -3649,10 +3649,12 @@
             }
 
             // =========== DETECCIÓN DE HORA ===========
-            const regexHora = /a\s*las?\s*(\d{1,2})(?::(\d{2})|(?:\s+y\s+(media|cuarto))?)?(?:\s*(?:de\s*la\s*)?(manana|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?))?/i;
+            const regexHora = /(?:a\s+las?\s+|a\s+la\s+|las?\s+|la\s+)?(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s*:\s*(\d{2})|\s+(?:y|con)\s+(\d{1,2}|media|cuarto)|\s+menos\s+(cuarto|\d{1,2}))?\s*(?:de\s+la\s+)?(manana|madrugada|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?)?/i;
             const horaMatch = textoLower.match(regexHora);
             if (horaMatch) {
-                let hora = parseInt(horaMatch[1]);
+                const mapNum = { 'una': 1, 'uno': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10, 'once': 11, 'doce': 12 };
+                let horaStr = horaMatch[1].toLowerCase();
+                let hora = parseInt(horaStr) || mapNum[horaStr] || 9;
                 let min = 0;
 
                 if (horaMatch[2]) {
@@ -3660,18 +3662,30 @@
                 } else if (horaMatch[3]) {
                     if (horaMatch[3] === 'media') min = 30;
                     else if (horaMatch[3] === 'cuarto') min = 15;
+                    else min = parseInt(horaMatch[3]) || mapNum[horaMatch[3]] || 0;
+                } else if (horaMatch[4]) {
+                    if (horaMatch[4] === 'cuarto') min = 45;
+                    else {
+                        let minResta = parseInt(horaMatch[4]) || mapNum[horaMatch[4]] || 0;
+                        min = 60 - minResta;
+                    }
+                    hora = hora - 1;
+                    if (hora < 1) hora = 12;
                 }
 
-                const periodo = horaMatch[4];
+                const periodo = horaMatch[5];
                 if (periodo) {
                     if ((periodo.includes('tarde') || periodo.includes('noche') || periodo.startsWith('p')) && hora < 12) {
                         hora += 12;
-                    } else if ((periodo.includes('manana') || periodo.startsWith('a')) && hora === 12) {
+                    } else if ((periodo.includes('manana') || periodo.includes('madrugada') || periodo.startsWith('a')) && hora === 12) {
                         hora = 0;
                     }
                 } else if (hora >= 1 && hora <= 6) {
-                    // Si no especifica y es hora pequeña, asumir tarde
-                    hora += 12;
+                    // Interpretar AM si dice explícitamente "mañana" antes en la frase ("mañana a las dos y media")
+                    const tieneManana = /\bmanana\b.+(?:a\s+las?|las?|a\s+la)/i.test(textoLower);
+                    if (!tieneManana) {
+                        hora += 12; // Por defecto a PM 
+                    }
                 }
 
                 info.hora = `${hora.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
