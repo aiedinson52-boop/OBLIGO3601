@@ -3718,26 +3718,23 @@
 
             // =========== LIMPIAR Y FORMATEAR TÍTULO ===========
             info.titulo = textoOriginal
-                // Remover fechas explícitas
-                .replace(/(?:el\s+|para\s+el\s+)?\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:del?\s+)?\d{4})?/gi, '')
-                // Remover fechas numéricas
+                // 1. Remover fechas explícitas (ej: "10 de marzo de 2026")
+                .replace(/(?:el\s+|para\s+el\s+)?(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:del?\s+)?(\d{4}))?/gi, '')
+                // 2. Remover fechas numéricas (ej: "15/02")
                 .replace(/\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?/g, '')
-                // Remover días de la semana
-                .replace(/(?:el\s+|este\s+|próximo\s+)?(domingo|lunes|martes|miércoles|jueves|viernes|sábado)/gi, '')
-                // Remover referencias temporales
-                .replace(/\b(hoy|mañana|pasado\s*mañana)\b/gi, '')
-                // Remover horas
-                .replace(/a\s*las?\s*\d+(?::\d+)?(?:\s+y\s+(?:media|cuarto))?(?:\s*(?:de\s*la\s*)?(?:mañana|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?))?/gi, '')
-                // Remover prioridades explícitas e implícitas
+                // 3. Remover días de la semana
+                .replace(/(?:el\s+|este\s+|proximo\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)/gi, '')
+                // 4. Remover referencias relativas ("hoy", "mañana", etc)
+                .replace(/\b(hoy|manana|pasado\s*manana)\b/gi, '')
+                // 5. Remover HORA COMPLETA (Patrón espejo al de detección)
+                .replace(/(?:a\s+las?\s+|a\s+la\s+|las?\s+|la\s+)?(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s*:\s*(\d{2})|\s+(?:y|con)\s+(\d{1,2}|media|cuarto)|\s+menos\s+(cuarto|\d{1,2}))?\s*(?:de\s+la\s+)?(manana|madrugada|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?)/gi, '')
+                // 6. Remover prioridades
                 .replace(/\b(prioridad\s+)?(alta|media|baja|normal)(\s+prioridad)?\b/gi, '')
-                .replace(/\b(urgente|muy\s+importante|importante|prioritario|crítico|inmediato|cuanto\s+antes)\b/gi, '')
-                .replace(/\b(poco\s*urgente|cuando\s*pueda|sin\s*prisa|no\s+es\s+urgente|puede\s+esperar)\b/gi, '')
-                // Remover períodos del día solos
-                .replace(/\b(?:de\s*la\s*)?(mañana|tarde|noche)\b/gi, '')
-                // Remover palabras de conexión huérfanas
-                .replace(/\bpara\s+el?\s*$/gi, '')
-                .replace(/^\s*el\s+/gi, '')
-                // Limpiar espacios múltiples
+                .replace(/\b(urgente|muy\s+importante|importante|prioritario|critico|inmediato|cuanto\s+antes)\b/gi, '')
+                // 7. Limpiar conectores que quedan sueltos al final o inicio
+                .replace(/\b(para\s+el|para\s+la|para|el|la|a\s+las?)\s*$/gi, '')
+                .replace(/^\s*(?:recordar\s+a\s+|recordar\s+|para\s+el\s+|para\s+)/gi, '')
+                // 8. Espacios y limpieza final
                 .replace(/\s+/g, ' ')
                 .trim();
 
