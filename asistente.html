@@ -3748,7 +3748,12 @@
             // Si no hay fecha, pedir clarificación
             if (!info.fecha) {
                 hablar('No detecté la fecha. Por favor diga la fecha, por ejemplo: "13 de febrero" o "mañana"');
-                document.getElementById('voice-status').textContent = 'Diga la fecha de la tarea';
+                const voiceStatusEl = document.getElementById('voice-status');
+                if (voiceStatusEl) {
+                    voiceStatusEl.textContent = 'Diga la fecha de la tarea';
+                } else {
+                    mostrarToast('No detecté la fecha. Por favor dicte la fecha.', 'warning');
+                }
                 return;
             }
 
