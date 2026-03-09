@@ -3249,8 +3249,19 @@
                 if (!stream) return false;
             }
 
-            // Stream listo, iniciar reconocimiento (MediaRecorder)
-            return true;
+            // Stream listo, iniciar reconocimiento
+            try {
+                fullTranscript = '';
+                recognition.start();
+                return true;
+            } catch (err) {
+                if (err.message && err.message.includes('already started')) {
+                    return true; // Ya está ejecutándose
+                }
+                console.error('Error iniciando reconocimiento:', err);
+                document.getElementById('voice-status').textContent = 'Error al iniciar. Intente de nuevo.';
+                return false;
+            }
         }
 
         /**
@@ -3284,44 +3295,17 @@
             }
         }
 
-        let mediaRecorder = null;
-        let audioChunks = [];
-
         function inicializarReconocimiento() {
-            const voiceButton = document.getElementById('voice-button');
-            if (voiceButton) {
-                voiceButton.addEventListener('click', async () => {
-                    console.log('Voice button clicked');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-CO';
+            recognition.continuous = false; // Cambiado a false para mayor compatibilidad y precisión
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
 
-                    // Verificar suscripción antes de permitir grabación
-                    if (!verificarSuscripcion()) {
-                        mostrarToast('Se requiere suscripción activa. Haga clic en "Pagar Suscripción Mensual" para continuar.', 'warning');
-                        return;
-                    }
-
-                    if (appState.isListening) {
-                        detenerGrabacion();
-                    } else {
-                        await iniciarGrabacionAlternativa();
-                    }
-                });
-                console.log('Voice button event listener attached successfully');
-            } else {
-                console.error('Voice button not found in DOM');
-            }
-
-            // Verificar estado del micrófono al cargar
-            checkMicrophoneStatus();
-        }
-
-        async function iniciarGrabacionAlternativa() {
-            try {
-                if (!microphoneInitialized) {
-                    const stream = await initMicrophone();
-                    if (!stream) return; // Falló
-                }
-
+            recognition.onstart = () => {
                 appState.isListening = true;
+                fullTranscript = '';
                 const btn = document.getElementById('voice-button');
                 const header = document.getElementById('transcript-header');
                 const el = document.getElementById('transcript');
@@ -3334,78 +3318,120 @@
                     header.style.padding = '10px';
                     header.style.borderRadius = '10px';
                 }
-                if (el) el.innerHTML = '<span style="color: #69F0AE; font-weight:bold;">🔊 Escuchando voz... (Toca de nuevo para terminar)</span>';
+                if (el) el.innerHTML = '<span style="color: #DDDDDD;">📢 Escuchando... Habla ahora</span>';
+                console.log('🎤 Reconocimiento iniciado');
+            };
 
-                // Usamos audioStream ya inicializado
-                mediaRecorder = new MediaRecorder(audioStream);
-                audioChunks = [];
+            recognition.onspeechstart = () => {
+                console.log('🔊 Habla detectada');
+                const el = document.getElementById('transcript');
+                if (el) el.innerHTML = '<span style="color: #69F0AE; font-weight:bold;">🔊 ...escuchando voz...</span>';
+            };
 
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        audioChunks.push(event.data);
+            recognition.onend = () => {
+                appState.isListening = false;
+                const btn = document.getElementById('voice-button');
+                const header = document.getElementById('transcript-header');
+
+                if (btn) btn.classList.remove('listening');
+                if (header) header.style.display = 'none';
+
+                console.log('🎤 Reconocimiento finalizado. Texto:', fullTranscript);
+
+                if (fullTranscript.trim()) {
+                    procesarTranscripcion(fullTranscript.trim());
+                } else {
+                    const el = document.getElementById('transcript');
+                    if (el) el.innerHTML = '<span style="color: #999;">No se escuchó nada. Intente de nuevo.</span>';
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscriptChunk = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscriptChunk += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
                     }
+                }
+
+                if (finalTranscriptChunk) {
+                    fullTranscript += finalTranscriptChunk;
+                }
+
+                const transcriptEl = document.getElementById('transcript');
+                if (transcriptEl) {
+                    transcriptEl.innerHTML = `
+                        <div style="font-size: 1.2em;">
+                            <span style="color: #FFFFFF; font-weight: 600;">${fullTranscript || finalTranscriptChunk}</span>
+                            <span style="color: #CCCCCC; font-style: italic;">${interimTranscript}</span>
+                        </div>
+                    `;
+                }
+            };
+
+            recognition.onerror = (e) => {
+                clearTimeout(silenceTimer);
+                const mensajes = {
+                    'no-speech': 'No se detectó audio. Intente de nuevo.',
+                    'audio-capture': 'No se pudo acceder al micrófono',
+                    'not-allowed': 'Permiso de micrófono denegado. Habilítelo en configuración del navegador.',
+                    'aborted': 'Reconocimiento cancelado'
                 };
 
-                mediaRecorder.onstop = async () => {
-                    if (el) el.innerHTML = '<span style="color: #DDDDDD;">⏳ Procesando tu voz en la nube... Espera.</span>';
+                if (e.error === 'not-allowed') {
+                    audioStream = null;
+                    microphoneInitialized = false;
+                }
 
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
+                if (e.error !== 'aborted') {
+                    document.getElementById('voice-status').textContent = mensajes[e.error] || 'Error de reconocimiento';
+                }
 
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result.split(',')[1];
-
-                        try {
-                            const res = await fetch('/api/voice-transcribe-free', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ audio: base64Audio, mimeType: 'audio/webm' })
-                            });
-
-                            if (!res.ok) throw new Error('Falló el API');
-
-                            const data = await res.json();
-                            if (data.success && data.transcript) {
-                                if (el) el.innerHTML = `<span style="color: #fff;">${data.transcript}</span>`;
-                                setTimeout(() => {
-                                    if (header) header.style.display = 'none';
-                                }, 2000);
-                                procesarTranscripcion(data.transcript);
-                            } else {
-                                throw new Error('Voz no detectada');
-                            }
-                        } catch (error) {
-                            console.error('Error de transcripción:', error);
-                            mostrarToast('No se pudo procesar tu voz', 'error');
-                            if (el) el.innerHTML = '<span style="color: #fca5a5;">No se pudo entender. Intente de nuevo.</span>';
-                            setTimeout(() => {
-                                if (header) header.style.display = 'none';
-                            }, 3000);
-                        }
-                    };
-
-                    reader.readAsDataURL(audioBlob);
-                };
-
-                mediaRecorder.start();
-            } catch (err) {
-                console.error('Error al iniciar grabación:', err);
                 appState.isListening = false;
                 document.getElementById('voice-button').classList.remove('listening');
-                mostrarToast('Error accediendo al micrófono', 'error');
-            }
-        }
+            };
 
-        function detenerGrabacion() {
-            appState.isListening = false;
-            const btn = document.getElementById('voice-button');
-            if (btn) btn.classList.remove('listening');
+            recognition.onspeechend = () => {
+                // Cuando el usuario deja de hablar, esperar un poco y procesar
+                clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => {
+                    if (appState.isListening && fullTranscript.trim()) {
+                        recognition.stop();
+                    }
+                }, SILENCE_TIMEOUT);
+            };
 
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
+            // Evento click - usa startRecording que reutiliza el stream
+            const voiceButton = document.getElementById('voice-button');
+            if (voiceButton) {
+                voiceButton.addEventListener('click', async () => {
+                    console.log('Voice button clicked');
+
+                    // Verificar suscripción antes de permitir grabación
+                    if (!verificarSuscripcion()) {
+                        mostrarToast('Se requiere suscripción activa. Haga clic en "Pagar Suscripción Mensual" para continuar.', 'warning');
+                        return;
+                    }
+
+                    if (appState.isListening) {
+                        clearTimeout(silenceTimer);
+                        appState.isListening = false;
+                        recognition.stop();
+                    } else {
+                        await startRecording();
+                    }
+                });
+                console.log('Voice button event listener attached successfully');
+            } else {
+                console.error('Voice button not found in DOM');
             }
+
+            // Verificar estado del micrófono al cargar
+            checkMicrophoneStatus();
         }
 
         // ============================================================================
