@@ -7,7 +7,7 @@
  * el sonido del sistema incluso en segundo plano.
  */
 
-const CACHE_NAME = 'obligo360-v3';
+const CACHE_NAME = 'obligo360-v4';
 const STATIC_ASSETS = [
     '/',
     '/asistente.html',
@@ -18,7 +18,7 @@ const STATIC_ASSETS = [
 
 // Instalación - Cachear recursos estáticos
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing v3...');
+    console.log('[SW] Installing v4...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -31,7 +31,7 @@ self.addEventListener('install', (event) => {
 
 // Activación - Limpiar caches antiguos
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating v3...');
+    console.log('[SW] Activating v4...');
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
@@ -58,30 +58,40 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Para HTML y navegación, forzar red (Network First)
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request, { cache: 'no-store' }) // Ignora caché HTTP del navegador
+                .then((response) => {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(event.request).then((cachedResponse) => {
+                        return cachedResponse || caches.match('/');
+                    });
+                })
+        );
+        return;
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Clonar respuesta para guardar en cache
                 const responseClone = response.clone();
-                caches.open(CACHE_NAME)
-                    .then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseClone);
+                });
                 return response;
             })
             .catch(() => {
-                // Si falla la red, buscar en cache
-                return caches.match(event.request)
-                    .then((cachedResponse) => {
-                        if (cachedResponse) {
-                            return cachedResponse;
-                        }
-                        // Fallback a página principal para navegación
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('/');
-                        }
-                        return new Response('Offline', { status: 503 });
-                    });
+                return caches.match(event.request).then((cachedResponse) => {
+                    if (cachedResponse) return cachedResponse;
+                    return new Response('Offline', { status: 503 });
+                });
             })
     );
 });
