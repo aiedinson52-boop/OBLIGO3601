@@ -2885,9 +2885,9 @@
         let usingSpeechAPI = false;
 
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const speechAPIAvailable = !!SpeechRecognitionAPI;
+        const speechAPIAvailable = false; // Forzado a false para usar el fallback más robusto de backend
 
-        console.log(`[VOZ] Web Speech API disponible: ${speechAPIAvailable}`);
+        console.log(`[VOZ] Web Speech API disponible: ${!!SpeechRecognitionAPI} (forzando backend)`);
 
         let audioStream = null;
         let microphoneInitialized = false;

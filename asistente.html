@@ -3170,9 +3170,9 @@
 
         // Detectar soporte de Web Speech API
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const speechAPIAvailable = !!SpeechRecognitionAPI;
+        const speechAPIAvailable = false; // Forzado a false para usar siempre el fallback más robusto (MediaRecorder + Backend Deepgram)
 
-        console.log(`[VOZ] Web Speech API disponible: ${speechAPIAvailable}`);
+        console.log(`[VOZ] Web Speech API disponible: ${!!SpeechRecognitionAPI} (pero forzado a false para asegurar el backend)`);
 
         // --- Variables para fallback MediaRecorder ---
         let audioStream = null;
