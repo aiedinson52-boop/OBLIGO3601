@@ -3112,15 +3112,14 @@
                     const audioBlob = new Blob(audioChunks, { type: actualMimeType });
                     const reader = new FileReader();
                     reader.onloadend = async () => {
-                        const base64Audio = reader.result.split(',')[1];
                         const apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                             ? 'https://softw.vercel.app/api/voice-transcribe-free'
                             : '/api/voice-transcribe-free';
                         try {
                             const res = await fetch(apiUrl, {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ audio: base64Audio, mimeType: actualMimeType })
+                                headers: { 'Content-Type': actualMimeType },
+                                body: audioBlob // Raw body Blob
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Falló el API');
