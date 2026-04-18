@@ -5,9 +5,14 @@
  * IMPORTANTE: Este SW maneja notificaciones push vía APNs.
  * El campo "sound" en el payload hace que iOS reproduzca
  * el sonido del sistema incluso en segundo plano.
+ * 
+ * VERSIÓN v5 — iOS Background Execution Bypass:
+ * - Procesa push payload y llama self.registration.showNotification()
+ *   para forzar la notificación nativa en iOS incluso en background.
+ * - Comunica estado push ↔ cliente vía postMessage.
  */
 
-const CACHE_NAME = 'obligo360-v4';
+const CACHE_NAME = 'obligo360-v6';
 const STATIC_ASSETS = [
     '/',
     '/asistente.html',
@@ -18,7 +23,7 @@ const STATIC_ASSETS = [
 
 // Instalación - Cachear recursos estáticos
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing v4...');
+    console.log('[SW] Installing v6...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -31,7 +36,7 @@ self.addEventListener('install', (event) => {
 
 // Activación - Limpiar caches antiguos
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating v4...');
+    console.log('[SW] Activating v6...');
     event.waitUntil(
         caches.keys()
             .then((cacheNames) => {
@@ -97,11 +102,21 @@ self.addEventListener('fetch', (event) => {
 });
 
 /**
- * EVENTO PUSH — Recibe notificaciones push del servidor vía APNs
+ * EVENTO PUSH — Recibe notificaciones push del servidor vía APNs/Web Push
  * 
- * Este es el handler crítico: cuando el servidor envía un push con
- * "sound": "default", iOS reproduce el sonido del sistema automáticamente.
- * No depende de JavaScript ni del estado de la app.
+ * Este es el handler CRÍTICO para iOS:
+ * - iOS suspende JavaScript cuando la PWA va a background
+ * - PERO el Service Worker sigue recibiendo eventos push
+ * - self.registration.showNotification() fuerza la notificación nativa
+ * - iOS reproduce el sonido del sistema automáticamente si el payload
+ *   incluye el campo adecuado
+ * 
+ * FLUJO iOS BACKGROUND:
+ * 1. AlertService detecta que iOS está en background (visibilitychange)
+ * 2. Delega la alerta al servidor via /api/push-send
+ * 3. El servidor envía Web Push con urgency: 'high'
+ * 4. iOS despierta este Service Worker
+ * 5. showNotification() muestra la notificación nativa con sonido
  */
 self.addEventListener('push', (event) => {
     console.log('[SW] Push recibido');
@@ -149,6 +164,8 @@ self.addEventListener('push', (event) => {
         ]
     };
 
+    // CRÍTICO: showNotification() es lo que fuerza a iOS a mostrar
+    // la notificación nativa con el sonido del sistema.
     event.waitUntil(
         self.registration.showNotification(notificationData.title, options)
     );
@@ -196,4 +213,14 @@ self.addEventListener('notificationclick', (event) => {
  */
 self.addEventListener('notificationclose', (event) => {
     console.log('[SW] Notificación cerrada sin interacción');
+});
+
+/**
+ * Mensajes del cliente — Para coordinar estado iOS foreground/background
+ */
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'PING') {
+        // El cliente verifica que el SW está vivo
+        event.source.postMessage({ type: 'PONG', timestamp: Date.now() });
+    }
 });

@@ -138,8 +138,8 @@
             --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
             0 8px 10px -6px rgb(0 0 0 / 0.1);
             --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
-            --glass-bg: rgba(255, 255, 255, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.3);
+            --glass-bg: rgba(30, 41, 59, 0.8);
+            --glass-border: rgba(71, 85, 105, 0.5);
             --glass-blur: blur(12px);
             --transition-fast: 150ms ease;
             --transition-normal: 250ms ease;
@@ -168,12 +168,7 @@
             background: var(--color-gray-400);
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --glass-bg: rgba(30, 41, 59, 0.8);
-                --glass-border: rgba(71, 85, 105, 0.5);
-            }
-        }
+        /* Dark theme is now the default - no media query needed */
 
         *,
         *::before,
@@ -186,22 +181,16 @@
         html {
             scroll-behavior: smooth;
             -webkit-font-smoothing: antialiased;
+            color-scheme: dark;
         }
 
         body {
             font-family: var(--font-family);
             font-size: var(--font-size-base);
             line-height: 1.5;
-            color: var(--color-gray-800);
-            background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-white) 50%, var(--color-primary-100) 100%);
+            color: var(--dark-text);
+            background: linear-gradient(135deg, var(--dark-bg) 0%, var(--dark-surface) 100%);
             min-height: 100vh;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            body {
-                color: var(--dark-text);
-                background: linear-gradient(135deg, var(--dark-bg) 0%, var(--dark-surface) 100%);
-            }
         }
 
         #app {
@@ -281,10 +270,8 @@
             border-bottom: 1px solid var(--color-gray-200);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .card-header {
-                border-bottom-color: var(--dark-border);
-            }
+        .card-header {
+            border-bottom-color: var(--dark-border);
         }
 
         .card-title {
@@ -293,10 +280,8 @@
             color: var(--color-gray-800);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .card-title {
-                color: var(--dark-text);
-            }
+        .card-title {
+            color: var(--dark-text);
         }
 
         .btn {
@@ -458,16 +443,14 @@
             opacity: 0.6;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .task-card {
-                background: var(--dark-surface);
-            }
+        .task-card {
+            background: var(--dark-surface);
+        }
 
-            .task-card.priority-alta,
-            .task-card.priority-media,
-            .task-card.priority-baja {
-                background: var(--dark-surface-elevated);
-            }
+        .task-card.priority-alta,
+        .task-card.priority-media,
+        .task-card.priority-baja {
+            background: var(--dark-surface-elevated);
         }
 
         .task-title {
@@ -476,10 +459,8 @@
             margin-bottom: var(--space-2);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .task-title {
-                color: var(--dark-text);
-            }
+        .task-title {
+            color: var(--dark-text);
         }
 
         .task-meta {
@@ -502,11 +483,9 @@
             box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .task-badge {
-                background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-500));
-                color: var(--color-white);
-            }
+        .task-badge {
+            background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-500));
+            color: var(--color-white);
         }
 
         .calendar {
@@ -556,10 +535,8 @@
             color: var(--color-gray-800);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .calendar-month-year {
-                color: var(--dark-text);
-            }
+        .calendar-month-year {
+            color: var(--dark-text);
         }
 
         .calendar-grid {
@@ -663,10 +640,8 @@
             transform: scale(1) translateY(0);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .confirmation-content {
-                background: var(--dark-surface);
-            }
+        .confirmation-content {
+            background: var(--dark-surface);
         }
 
         .confirmation-title {
@@ -676,10 +651,8 @@
             margin-bottom: var(--space-4);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .confirmation-title {
-                color: var(--dark-text);
-            }
+        .confirmation-title {
+            color: var(--dark-text);
         }
 
         .confirmation-details {
@@ -689,10 +662,8 @@
             margin-bottom: var(--space-6);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .confirmation-details {
-                background: var(--dark-surface-elevated);
-            }
+        .confirmation-details {
+            background: var(--dark-surface-elevated);
         }
 
         .confirmation-row {
@@ -716,14 +687,12 @@
             color: var(--color-gray-800);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .confirmation-label {
-                color: var(--dark-text-muted);
-            }
+        .confirmation-label {
+            color: var(--dark-text-muted);
+        }
 
-            .confirmation-value {
-                color: var(--dark-text);
-            }
+        .confirmation-value {
+            color: var(--dark-text);
         }
 
         .confirmation-actions {
@@ -835,10 +804,8 @@
             background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
         }
 
-        @media (prefers-color-scheme: dark) {
-            #lista-tareas::-webkit-scrollbar-track {
-                background: var(--dark-surface);
-            }
+        #lista-tareas::-webkit-scrollbar-track {
+            background: var(--dark-surface);
         }
 
         .day-summary {
@@ -1820,8 +1787,9 @@
         }
 
         function formatearHora12(hora24) {
+            if (!hora24 || hora24 === 'sin hora') return 'Sin hora';
             const [h, m] = hora24.split(':').map(Number);
-            const periodo = h >= 12 ? 'p.m.' : 'a.m.';
+            const periodo = h >= 12 ? 'PM' : 'AM';
             const hora12 = h % 12 || 12;
             return `${hora12}:${m.toString().padStart(2, '0')} ${periodo}`;
         }
@@ -2125,7 +2093,24 @@
         let alarmaActiva = false;
         let audioContext = null;
         let alarmaInterval = null;
-        const tareasAlertadas = new Set(); // Evitar alertar la misma tarea múltiples veces
+        const tareasAlertadas = new Set();
+
+        // ============================================================================
+        // iOS BACKGROUND BYPASS — Variables y helpers inline
+        // ============================================================================
+        let _iosEnBackground = false;
+        let _iosPushDelegadas = new Set();
+
+        function _esIOS() {
+            const ua = navigator.userAgent || '';
+            return /iPad|iPhone|iPod/.test(ua) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function _esPWAInstalada() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+        } // Evitar alertar la misma tarea múltiples veces
 
         /**
          * Solicita permiso para notificaciones
@@ -2441,6 +2426,28 @@
 
                 // Verificar fecha y hora
                 if (tarea.fecha === fechaHoy && tarea.hora === horaActual) {
+                    // iOS BACKGROUND BYPASS: Si iOS está en background, delegar a Push
+                    if (_esIOS() && _iosEnBackground && _esPWAInstalada()) {
+                        if (!_iosPushDelegadas.has(tarea.id)) {
+                            _iosPushDelegadas.add(tarea.id);
+                            console.log('[iOS-BG] Delegando alarma a Push:', tarea.titulo);
+                            fetch('/api/push-send', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    title: `🔔 ¡Tarea ahora! ${tarea.titulo}`,
+                                    body: `Es hora de tu tarea: ${tarea.titulo} (${tarea.hora})`,
+                                    data: { tareaId: tarea.id, tag: `ios-bg-${tarea.id}`, url: '/' },
+                                    subscription: JSON.parse(localStorage.getItem('push_subscription') || 'null')
+                                })
+                            }).catch(e => console.warn('[iOS-BG] Error push:', e));
+                            // Marcar como alertada para no repetir
+                            tareasAlertadas.add(tarea.id);
+                            localStorage.setItem('tareasAlertadas', JSON.stringify([...tareasAlertadas]));
+                        }
+                        continue; // No mostrar alarma local en background
+                    }
+
                     mostrarAlarma(tarea);
                     break; // Solo una alarma a la vez
                 }
@@ -2471,6 +2478,9 @@
 
         function renderizarApp() {
             const app = document.getElementById('app');
+            // Detectar si estamos en Capacitor (APK)
+            const esMobileAPK = typeof Capacitor !== 'undefined';
+
             app.innerHTML = `
     <header class="app-header">
       <div style="display: flex; align-items: center; gap: var(--space-3);">
@@ -2484,6 +2494,7 @@
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: var(--space-4);">
+        ${!esMobileAPK ? `
         <div id="voice-header-container" style="display: flex; align-items: center; gap: var(--space-3);">
           <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 50px; height: 50px; flex-shrink: 0;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2512,23 +2523,54 @@
           </div>
           <span id="voice-label" style="font-size: 11px; color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.3); white-space: nowrap;">Control por Voz</span>
         </div>
+        ` : ''}
         <div id="datetime-display" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
           <span id="current-date" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
           <span id="current-time" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: #ffffff; font-family: 'Consolas', monospace; text-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
         </div>
         ${currentUser ? `
-        <div id="user-menu" style="display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3);">
-          <div style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: var(--radius-full); padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-2); border: 1px solid rgba(255,255,255,0.3);">
-            <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
-              ${(currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()}
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);">
+          <div id="user-menu" style="display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3);">
+            <div style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: var(--radius-full); padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-2); border: 1px solid rgba(255,255,255,0.3);">
+              <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+                ${(currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()}
+              </div>
+              <span style="color: white; font-size: var(--font-size-sm); font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${currentUser.displayName || currentUser.email.split('@')[0]}
+              </span>
+              <button onclick="cerrarSesion()" style="background: rgba(255,255,255,0.2); border: none; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: white; cursor: pointer; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Cerrar sesión">
+                Salir
+              </button>
             </div>
-            <span style="color: white; font-size: var(--font-size-sm); font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              ${currentUser.displayName || currentUser.email.split('@')[0]}
-            </span>
-            <button onclick="cerrarSesion()" style="background: rgba(255,255,255,0.2); border: none; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: white; cursor: pointer; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Cerrar sesión">
-              Salir
-            </button>
           </div>
+          ${esMobileAPK ? `
+          <div id="voice-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-3);">
+            <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" x2="12" y1="19" y2="22"/>
+              </svg>
+            </button>
+            <div id="transcript-header" style="
+              display: none;
+              background: rgba(30, 41, 59, 0.8);
+              backdrop-filter: blur(10px);
+              border-radius: 12px;
+              padding: 8px 12px;
+              max-width: 200px;
+              border: 1px solid rgba(255,255,255,0.2);
+            ">
+              <span id="transcript" style="
+                color: #ffffff;
+                font-size: 12px;
+                font-weight: 500;
+                display: block;
+              ">🎤 Escuchando...</span>
+            </div>
+            <span id="voice-label" style="font-size: 10px; color: #ffffff; font-weight: 600; text-align: right; line-height: 1.1;">Control por Voz</span>
+          </div>
+          ` : ''}
         </div>
         ` : ''}
       </div>
@@ -3100,7 +3142,17 @@
                 }
                 if (el) el.innerHTML = '<span style="color: #69F0AE; font-weight:bold;">🔊 Escuchando (modo nube)... (Toca para detener)</span>';
 
-                mediaRecorder = new MediaRecorder(audioStream);
+                // Negociar el mejor MIME type soportado (webm preferido para compatibilidad con APIs STT)
+                const preferredMimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+                let recorderOptions = {};
+                for (const mime of preferredMimeTypes) {
+                    if (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(mime)) {
+                        recorderOptions.mimeType = mime;
+                        console.log('[VOZ] MediaRecorder MIME type seleccionado:', mime);
+                        break;
+                    }
+                }
+                mediaRecorder = new MediaRecorder(audioStream, recorderOptions);
                 audioChunks = [];
 
                 mediaRecorder.ondataavailable = (event) => {
@@ -3236,7 +3288,7 @@
             const info = {
                 titulo: texto,
                 fecha: null,
-                hora: '09:00',
+                hora: null, // Cambiado de '09:00' a null para detectar si se especificó hora
                 contexto: 'personal',
                 prioridad: 'media'
             };
@@ -3275,7 +3327,7 @@
                 }
             }
 
-            // 2. Fechas relativas: hoy, mañana, pasado mañana
+            // 2. Fechas relativas: hoy, mañana, pasado mañana, dentro de X días
             if (!info.fecha) {
                 if (/\bhoy\b/i.test(textoLower)) {
                     info.fecha = fechaAString(hoy);
@@ -3285,6 +3337,22 @@
                 } else if (/\bmanana\b/i.test(textoLower)) {
                     const m = new Date(hoy); m.setDate(m.getDate() + 1);
                     info.fecha = fechaAString(m);
+                } else {
+                    // "dentro de 3 dias", "dentro de una semana", "en 2 meses"
+                    const matchRelativo = textoLower.match(/(?:dentro\s+de|en)\s+(\d+|un|una)\s+(dia|semana|mes|año)s?/i);
+                    if (matchRelativo) {
+                        const numMap = { 'un': 1, 'una': 1 };
+                        const cantidad = parseInt(matchRelativo[1]) || numMap[matchRelativo[1].toLowerCase()] || 1;
+                        const unidad = matchRelativo[2].toLowerCase();
+                        const f = new Date(hoy);
+
+                        if (unidad.includes('dia')) f.setDate(f.getDate() + cantidad);
+                        else if (unidad.includes('semana')) f.setDate(f.getDate() + (cantidad * 7));
+                        else if (unidad.includes('mes')) f.setMonth(f.getMonth() + cantidad);
+                        else if (unidad.includes('año')) f.setFullYear(f.getFullYear() + cantidad);
+
+                        info.fecha = fechaAString(f);
+                    }
                 }
             }
 
@@ -3324,47 +3392,171 @@
                 }
             }
 
-            // =========== DETECCIÓN DE HORA ===========
-            const regexHora = /(?:a\s+las?\s+|a\s+la\s+|las?\s+|la\s+)?(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s*:\s*(\d{2})|\s+(?:y|con)\s+(\d{1,2}|media|cuarto)|\s+menos\s+(cuarto|\d{1,2}))?\s*(?:de\s+la\s+)?(manana|madrugada|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?)?/i;
-            const horaMatch = textoLower.match(regexHora);
-            if (horaMatch) {
-                const mapNum = { 'una': 1, 'uno': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10, 'once': 11, 'doce': 12 };
-                let horaStr = horaMatch[1].toLowerCase();
-                let hora = parseInt(horaStr) || mapNum[horaStr] || 9;
-                let min = 0;
+            // =========== DETECCIÓN DE HORA (PARSER ROBUSTO COMPLETO) ===========
+            // Mapa completo de minutos en palabras
+            const MINUTOS_MAP = {
+                'uno': 1, 'un': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+                'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
+                'once': 11, 'doce': 12, 'trece': 13, 'catorce': 14, 'quince': 15,
+                'dieciseis': 16, 'diecisiete': 17, 'dieciocho': 18, 'diecinueve': 19,
+                'veinte': 20, 'veintiuno': 21, 'veintidos': 22, 'veintitres': 23,
+                'veinticuatro': 24, 'veinticinco': 25, 'veintiseis': 26, 'veintisiete': 27,
+                'veintiocho': 28, 'veintinueve': 29, 'treinta': 30,
+                'treinta y uno': 31, 'treinta y dos': 32, 'treinta y tres': 33,
+                'treinta y cuatro': 34, 'treinta y cinco': 35, 'treinta y seis': 36,
+                'treinta y siete': 37, 'treinta y ocho': 38, 'treinta y nueve': 39,
+                'cuarenta': 40, 'cuarenta y uno': 41, 'cuarenta y dos': 42,
+                'cuarenta y tres': 43, 'cuarenta y cuatro': 44, 'cuarenta y cinco': 45,
+                'cuarenta y seis': 46, 'cuarenta y siete': 47, 'cuarenta y ocho': 48,
+                'cuarenta y nueve': 49, 'cincuenta': 50, 'cincuenta y uno': 51,
+                'cincuenta y dos': 52, 'cincuenta y tres': 53, 'cincuenta y cuatro': 54,
+                'cincuenta y cinco': 55, 'cincuenta y seis': 56, 'cincuenta y siete': 57,
+                'cincuenta y ocho': 58, 'cincuenta y nueve': 59
+            };
+            const HORAS_MAP = { 'una': 1, 'un': 1, 'uno': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10, 'once': 11, 'doce': 12 };
+            
+            const horasPalabras = 'una|un|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce';
+            const minPalabras = 'en\\s+punto|cuarto|media|uno|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuno|veintidos|veintitres|veinticuatro|veinticinco|veintiseis|veintisiete|veintiocho|veintinueve|treinta(?:\\s+y\\s+(?:uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve))?|cuarenta(?:\\s+y\\s+(?:uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve))?|cincuenta(?:\\s+y\\s+(?:uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve))?';
 
-                if (horaMatch[2]) {
-                    min = parseInt(horaMatch[2]);
-                } else if (horaMatch[3]) {
-                    if (horaMatch[3] === 'media') min = 30;
-                    else if (horaMatch[3] === 'cuarto') min = 15;
-                    else min = parseInt(horaMatch[3]) || mapNum[horaMatch[3]] || 0;
-                } else if (horaMatch[4]) {
-                    if (horaMatch[4] === 'cuarto') min = 45;
-                    else {
-                        let minResta = parseInt(horaMatch[4]) || mapNum[horaMatch[4]] || 0;
-                        min = 60 - minResta;
+            function _parsearMin(str) {
+                if (!str) return 0;
+                str = str.trim().toLowerCase();
+                if (/en\s*punto/.test(str)) return 0;
+                if (str === 'cuarto') return 15;
+                if (str === 'media') return 30;
+                const n = parseInt(str, 10);
+                if (!isNaN(n) && n >= 0 && n <= 59) return n;
+                if (MINUTOS_MAP[str] !== undefined) return MINUTOS_MAP[str];
+                return 0;
+            }
+            function _parsearHoraNum(str) {
+                if (!str) return null;
+                str = str.trim().toLowerCase();
+                const n = parseInt(str, 10);
+                if (!isNaN(n)) return n;
+                return HORAS_MAP[str] || null;
+            }
+
+            let horaDetectada = null;
+            let minDetectado = 0;
+            let periodoDetectado = null;
+            let horaMatchTexto = '';
+
+            if (/\b(mediodia|medio\s*dia)\b/.test(textoLower)) {
+                horaDetectada = 12; minDetectado = 0; periodoDetectado = 'pm';
+            } else if (/\b(medianoche|media\s*noche)\b/.test(textoLower)) {
+                horaDetectada = 0; minDetectado = 0; periodoDetectado = 'am';
+            }
+
+            if (horaDetectada === null) {
+                const menosRx = new RegExp(
+                    '(?:(?:a\\s+)?las?\\s+)?(' + horasPalabras + '|\\d{1,2})\\s+menos\\s+(cuarto|media|cinco|diez|quince|veinte|veinticinco|treinta|\\d{1,2})\\s*(?:(?:de|en|por)\\s+la\\s+)?(manana|madrugada|tarde|noche)?', 'i'
+                );
+                const menosM = textoLower.match(menosRx);
+                if (menosM) {
+                    let hRef = _parsearHoraNum(menosM[1]);
+                    let resta = 0;
+                    if (menosM[2] === 'cuarto') resta = 15;
+                    else if (menosM[2] === 'media') resta = 30;
+                    else resta = _parsearMin(menosM[2]);
+                    if (hRef !== null && resta > 0) {
+                        horaDetectada = hRef - 1;
+                        if (horaDetectada < 0) horaDetectada = 23;
+                        minDetectado = 60 - resta;
+                        periodoDetectado = menosM[3] || null;
+                        horaMatchTexto = menosM[0];
                     }
-                    hora = hora - 1;
-                    if (hora < 1) hora = 12;
                 }
+            }
 
-                const periodo = horaMatch[5];
-                if (periodo) {
-                    if ((periodo.includes('tarde') || periodo.includes('noche') || periodo.startsWith('p')) && hora < 12) {
-                        hora += 12;
-                    } else if ((periodo.includes('manana') || periodo.includes('madrugada') || periodo.startsWith('a')) && hora === 12) {
-                        hora = 0;
+            if (horaDetectada === null) {
+                const generalRx = new RegExp(
+                    '(?:a\\s+)?las?\\s+(' + horasPalabras + '|\\d{1,2})(?:\\s*(?:y|con|:|\\.|\\-)\\s*(' + minPalabras + '|\\d{1,2}))?\\s*(?:(?:de|en|por)\\s+la\\s+)?(manana|madrugada|tarde|noche)?\\s*(?:del?\\s+)?(mediodia|medio\\s*dia|dia)?\\s*(a\\.?\\s*m\\.?|p\\.?\\s*m\\.?)?', 'i'
+                );
+                const gM = textoLower.match(generalRx);
+                if (gM) {
+                    horaDetectada = _parsearHoraNum(gM[1]);
+                    minDetectado = _parsearMin(gM[2]);
+                    periodoDetectado = gM[3] || gM[4] || gM[5] || null;
+                    horaMatchTexto = gM[0];
+                }
+            }
+
+            if (horaDetectada === null) {
+                const sinAlasRx = new RegExp(
+                    '\\b(' + horasPalabras + '|\\d{1,2})(?:\\s*(?:y|con)?\\s*(' + minPalabras + '|\\d{1,2}))?\\s+(?:(?:de|en|por)\\s+la\\s+)(manana|madrugada|tarde|noche)', 'i'
+                );
+                const sM = textoLower.match(sinAlasRx);
+                if (sM) {
+                    horaDetectada = _parsearHoraNum(sM[1]);
+                    minDetectado = _parsearMin(sM[2]);
+                    periodoDetectado = sM[3] || null;
+                    horaMatchTexto = sM[0];
+                }
+            }
+            
+            if (horaDetectada === null) {
+                const digM = textoLower.match(/\b(\d{1,2}):(\d{2})\s*(?:(?:de|en|por)\s+la\s+)?(manana|madrugada|tarde|noche)?\s*(a\.?\s*m\.?|p\.?\s*m\.?)?/i);
+                if (digM) {
+                    horaDetectada = parseInt(digM[1], 10);
+                    minDetectado = parseInt(digM[2], 10);
+                    periodoDetectado = digM[3] || digM[4] || null;
+                    horaMatchTexto = digM[0];
+                }
+            }
+            
+            if (horaDetectada === null) {
+                const ampmM = textoLower.match(/\b(\d{1,2})\s*(a\.?\s*m\.?|p\.?\s*m\.?)\b/i);
+                if (ampmM) {
+                    horaDetectada = parseInt(ampmM[1], 10);
+                    minDetectado = 0;
+                    periodoDetectado = ampmM[2];
+                    horaMatchTexto = ampmM[0];
+                }
+            }
+            
+            if (horaDetectada !== null) {
+                let hora24 = horaDetectada;
+                
+                if (periodoDetectado) {
+                    const p = periodoDetectado.toLowerCase().replace(/[.\s]/g, '');
+                    if (p.includes('manana') || p.includes('madrugada') || p === 'am') {
+                        if (hora24 === 12) hora24 = 0;
+                    } else if (p.includes('tarde') || p.includes('noche') || p === 'pm') {
+                        if (hora24 === 12) { /* 12 PM = 12 */ }
+                        else if (hora24 >= 1 && hora24 <= 11) hora24 += 12;
+                    } else if (p.includes('mediodia') || p.includes('dia')) {
+                        hora24 = 12;
                     }
-                } else if (hora >= 1 && hora <= 6) {
-                    // Interpretar AM si dice explícitamente "mañana" antes en la frase ("mañana a las dos y media")
+                } else {
                     const tieneManana = /\bmanana\b.+(?:a\s+las?|las?|a\s+la)/i.test(textoLower);
-                    if (!tieneManana) {
-                        hora += 12; // Por defecto a PM 
+                    if (tieneManana) {
+                        if (hora24 === 12) hora24 = 0;
+                    } else {
+                        if (hora24 >= 1 && hora24 <= 6) hora24 += 12;
+                    }
+                    
+                    if (info.fecha === fechaAString(hoy)) {
+                        const horaActual = hoy.getHours();
+                        const minActual = hoy.getMinutes();
+                        if (hora24 < horaActual || (hora24 === horaActual && minDetectado <= minActual)) {
+                            if (!periodoDetectado && hora24 < 12 && (hora24 + 12) > horaActual) {
+                                hora24 += 12;
+                            } else {
+                                const manana = new Date(hoy);
+                                manana.setDate(manana.getDate() + 1);
+                                info.fecha = fechaAString(manana);
+                            }
+                        }
                     }
                 }
+                
+                info.hora = `${hora24.toString().padStart(2, '0')}:${minDetectado.toString().padStart(2, '0')}`;
+                console.log('[HORA] ✅ Detectada:', info.hora, 'de texto:', horaMatchTexto);
+            }
 
-                info.hora = `${hora.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+            if (!info.hora) {
+                info.hora = 'sin hora';
             }
 
             // =========== DETECCIÓN DE PRIORIDAD ===========
@@ -3399,18 +3591,23 @@
                 // 2. Remover fechas numéricas (ej: "15/02")
                 .replace(/\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?/g, '')
                 // 3. Remover días de la semana
-                .replace(/(?:el\s+|este\s+|proximo\s+)?(domingo|lunes|martes|miercoles|jueves|viernes|sabado)/gi, '')
-                // 4. Remover referencias relativas ("hoy", "mañana", etc)
-                .replace(/\b(hoy|manana|pasado\s*manana)\b/gi, '')
-                // 5. Remover HORA COMPLETA (Patrón espejo al de detección)
-                .replace(/(?:a\s+las?\s+|a\s+la\s+|las?\s+|la\s+)?(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s*:\s*(\d{2})|\s+(?:y|con)\s+(\d{1,2}|media|cuarto)|\s+menos\s+(cuarto|\d{1,2}))?\s*(?:de\s+la\s+)?(manana|madrugada|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?)/gi, '')
-                // 6. Remover prioridades
+                .replace(/(?:el\s+|este\s+|pr[óo]ximo\s+)?(domingo|lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado)/gi, '')
+                // 4. Remover referencias relativas ("hoy", "mañana", "pasado mañana")
+                .replace(/\b(hoy|mañana|manana|pasado\s*mañana|pasado\s*manana)\b/gi, '')
+                // 5. Remover "dentro de X días/semanas..."
+                .replace(/(?:dentro\s+de|en)\s+(\d+|un|una)\s+(d[íi]a|semana|mes|año)s?/gi, '')
+                .replace(horaMatchTexto ? new RegExp(horaMatchTexto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi') : /(?!)/, '')
+                // 6b. Fallback: patrones horarios restantes
+                .replace(/(?:a\s+las?\s+|a\s+la\s+|las?\s+|la\s+)?(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\s*[:.]\s*\d{2}|\s+(?:y|con)\s+(?:\d{1,2}|media|cuarto|(?:treinta|cuarenta|cincuenta)(?:\s+y\s+\w+)?|veinti\w+|dieci\w+|\w+)|\s+menos\s+(?:cuarto|\d{1,2}))?\s*(?:(?:de|en|por)\s+la\s+)?(?:mañana|manana|madrugada|tarde|noche|am|pm|a\.?m\.?|p\.?m\.?)/gi, '')
+                // 7. Remover prioridades
                 .replace(/\b(prioridad\s+)?(alta|media|baja|normal)(\s+prioridad)?\b/gi, '')
-                .replace(/\b(urgente|muy\s+importante|importante|prioritario|critico|inmediato|cuanto\s+antes)\b/gi, '')
-                // 7. Limpiar conectores que quedan sueltos al final o inicio
-                .replace(/\b(para\s+el|para\s+la|para|el|la|a\s+las?)\s*$/gi, '')
-                .replace(/^\s*(?:recordar\s+a\s+|recordar\s+|para\s+el\s+|para\s+)/gi, '')
-                // 8. Espacios y limpieza final
+                .replace(/\b(urgente|muy\s+importante|importante|prioritari[oa]|cr[íi]tico|inmediato|cuanto\s+antes)\b/gi, '')
+                // 8. Limpiar conectores y "intro" sueltos
+                .replace(/\b(?:para\s+)?(?:el\s+)?d[íi]a(?:\s+de)?\b/gi, '')
+                .replace(/\b(?:a\s+lo\s+largo\s+del?|a\s+trav[ée]s\s+del?|durante\s+el?)\b/gi, '')
+                .replace(/\b(para\s+el|para\s+la|para|el|la|a\s+las?|las?|a|en)\s*$/gi, '')
+                .replace(/^\s*(?:recordar(?:le)?\s+a(?:\s+un)?\s+|recordar(?:le)?\s+|para\s+el\s+|para\s+|que\s+|por\s+favor\s+|necesito\s+que\s+|quisiera\s+)/gi, '')
+                // 9. Espacios y limpieza final
                 .replace(/\s+/g, ' ')
                 .trim();
 
@@ -4139,11 +4336,56 @@
                 navigator.serviceWorker.register('/sw.js')
                     .then((registration) => {
                         console.log('✅ Service Worker registrado:', registration.scope);
+
+                        // iOS PUSH SETUP: Si es iOS PWA, intentar registrar push
+                        if (_esIOS() && _esPWAInstalada() && 'PushManager' in window) {
+                            registration.pushManager.getSubscription().then(sub => {
+                                if (sub) {
+                                    localStorage.setItem('push_subscription', JSON.stringify(sub.toJSON()));
+                                    console.log('[iOS-BG] ✅ Suscripción push recuperada');
+                                }
+                            });
+                        }
                     })
                     .catch((error) => {
                         console.log('❌ Service Worker error:', error);
                     });
             });
+        }
+
+        // ============================================================================
+        // iOS BACKGROUND BYPASS — visibilitychange listener
+        // Solo se activa en iOS. Android/Windows mantienen su comportamiento actual.
+        // ============================================================================
+        if (_esIOS()) {
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    _iosEnBackground = true;
+                    console.log('[iOS-BG] 📴 App en background — push delegado activo');
+                } else if (document.visibilityState === 'visible') {
+                    _iosEnBackground = false;
+                    _iosPushDelegadas.clear();
+                    console.log('[iOS-BG] 📱 App en foreground — audio local activo');
+                }
+            });
+
+            // Banner de instalación PWA (solo si no está instalada)
+            if (!_esPWAInstalada()) {
+                const ultimoDescarte = localStorage.getItem('pwa_banner_descartado');
+                const mostrarBanner = !ultimoDescarte || (Date.now() - parseInt(ultimoDescarte, 10)) > 86400000;
+                if (mostrarBanner) {
+                    setTimeout(() => {
+                        const banner = document.createElement('div');
+                        banner.id = 'ios-pwa-banner';
+                        banner.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:16px 20px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.5);z-index:99999;max-width:360px;width:calc(100% - 40px);font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;border:1px solid rgba(99,102,241,0.4);`;
+                        banner.innerHTML = `<div style="display:flex;align-items:flex-start;gap:12px;"><div style="font-size:32px;flex-shrink:0;">📲</div><div style="flex:1;"><p style="margin:0 0 6px 0;font-weight:600;font-size:14px;color:#e2e8f0;">Recibe alertas en segundo plano</p><p style="margin:0 0 12px 0;font-size:12px;color:#94a3b8;line-height:1.4;">Para recibir notificaciones con la app cerrada, toca <strong style="color:#fff;">Compartir</strong> <span style="font-size:16px;">⬆</span> → <strong style="color:#fff;">Agregar a inicio</strong></p><button onclick="this.closest('#ios-pwa-banner').remove();localStorage.setItem('pwa_banner_descartado',Date.now().toString());" style="background:rgba(99,102,241,0.3);color:#a5b4fc;border:1px solid rgba(99,102,241,0.5);padding:6px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;">Entendido</button></div></div>`;
+                        document.body.appendChild(banner);
+                        setTimeout(() => { const b = document.getElementById('ios-pwa-banner'); if (b) { b.style.transition='opacity 0.3s'; b.style.opacity='0'; setTimeout(() => b.remove(), 300); } }, 15000);
+                    }, 2000);
+                }
+            }
+
+            console.log('[iOS-BG] Estado:', { esIOS: true, esPWA: _esPWAInstalada(), push: 'PushManager' in window });
         }
     </script>
     <script>
