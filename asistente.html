@@ -408,6 +408,164 @@
             }
         }
 
+        /* Dashboard Styles Professional */
+        .dashboard-container {
+            margin-bottom: var(--space-6);
+            width: 100%;
+        }
+
+        .dashboard-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius-2xl);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: var(--space-6);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: var(--space-8);
+            align-items: center;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+            color: #ffffff;
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .chart-inner-text {
+            position: absolute;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .percentage-value {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-white);
+            line-height: 1;
+        }
+
+        .percentage-label {
+            font-size: var(--font-size-xs);
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-4);
+            z-index: 1;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: var(--space-4);
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all var(--transition-normal);
+        }
+
+        .stat-item:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: var(--font-size-sm);
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: var(--space-1);
+        }
+
+        .stat-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+        }
+
+        .stat-value.completed {
+            color: #10b981;
+        }
+
+        .stat-value.pending {
+            color: #f59e0b;
+        }
+
+        .progress-mini-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-full);
+            margin-top: var(--space-3);
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .progress-mini-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            border-radius: var(--radius-full);
+            transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @media (max-width: 640px) {
+            .dashboard-card {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
+                text-align: center;
+            }
+            .chart-wrapper {
+                margin: 0 auto;
+                width: 140px;
+                height: 140px;
+            }
+            .stat-label {
+                justify-content: center;
+            }
+        }
+
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
         .form-group {
             margin-bottom: var(--space-4);
         }
@@ -2860,6 +3018,8 @@
       </div>
     </header>
     
+    <div id="dashboard-container" class="dashboard-container"></div>
+    
     <main class="main-layout">
       <div>
         <div id="calendar-container"></div>
@@ -2898,6 +3058,100 @@
             renderizarVoice();
             renderizarListaTareas();
             renderizarListaCumplidas();
+            renderizarDashboard();
+        }
+
+        /**
+         * Renderiza el Dashboard de progreso de tareas con un gráfico donut SVG profesional
+         */
+        function renderizarDashboard() {
+            const container = document.getElementById('dashboard-container');
+            if (!container) return;
+
+            const total = appState.tareas.length;
+            const cumplidas = appState.tareas.filter(t => t.estado === 'Cumplida').length;
+            const pendientes = total - cumplidas;
+
+            const porcentaje = total > 0 ? Math.round((cumplidas / total) * 100) : 0;
+
+            // Parámetros del donut SVG
+            const radius = 35;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (porcentaje / 100) * circumference;
+
+            container.innerHTML = `
+                <div class="dashboard-card animate-in">
+                    <div class="chart-wrapper">
+                        <svg width="100%" height="100%" viewBox="0 0 100 100">
+                            <!-- Círculo de fondo (Gray track) -->
+                            <circle cx="50" cy="50" r="${radius}" fill="transparent" 
+                                stroke="rgba(255,255,255,0.06)" stroke-width="10" />
+                            
+                            <!-- Gradiente personalizado -->
+                            <defs>
+                                <linearGradient id="donutGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#10b981" />
+                                    <stop offset="100%" stop-color="#34d399" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Círculo de progreso -->
+                            <circle cx="50" cy="50" r="${radius}" fill="transparent" 
+                                stroke="url(#donutGradient)" stroke-width="10" 
+                                stroke-dasharray="${circumference}" 
+                                stroke-dashoffset="${circumference}" 
+                                stroke-linecap="round" 
+                                transform="rotate(-90 50 50)"
+                                style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);">
+                                <animate attributeName="stroke-dashoffset" 
+                                    from="${circumference}" to="${offset}" 
+                                    dur="1.5s" fill="freeze" 
+                                    calcMode="spline" keySplines="0.4, 0, 0.2, 1" />
+                            </circle>
+                        </svg>
+                        <div class="chart-inner-text">
+                            <span class="percentage-value">${porcentaje}%</span>
+                            <span class="percentage-label">Progreso</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-content">
+                        <div style="margin-bottom: var(--space-4);">
+                            <h2 style="font-size: var(--font-size-2xl); font-weight: 800; margin-bottom: 4px; background: linear-gradient(90deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Progreso Operativo</h2>
+                            <p style="color: rgba(255,255,255,0.5); font-size: var(--font-size-sm); letter-spacing: 0.01em;">Control en tiempo real de eficiencia y tareas.</p>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Completadas
+                                </div>
+                                <div class="stat-value completed">${cumplidas}</div>
+                                <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px;">Tareas archivadas</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                    Pendientes
+                                </div>
+                                <div class="stat-value pending">${pendientes}</div>
+                                <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px;">Acción requerida</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: var(--space-4);">
+                            <div style="display: flex; justify-content: space-between; font-size: var(--font-size-xs); margin-bottom: 8px;">
+                                <span style="color: rgba(255,255,255,0.5); font-weight: 500;">EFICIENCIA GENERAL</span>
+                                <span style="color: #10b981; font-weight: 700;">${porcentaje}%</span>
+                            </div>
+                            <div class="progress-mini-bar">
+                                <div class="progress-mini-fill" style="width: ${porcentaje}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         /**
@@ -4041,6 +4295,7 @@
                 if (guardado) {
                     mostrarToast('✅ Tarea guardada correctamente', 'success');
                     hablar('Tarea guardada correctamente.');
+                    renderizarDashboard();
                 } else {
                     mostrarToast('⚠️ Error al guardar la tarea. Intente de nuevo.', 'error');
                     hablar('Hubo un error al guardar la tarea.');
@@ -4102,6 +4357,7 @@
             renderizarListaTareas();
             renderizarListaCumplidas();
             renderizarCalendario();
+            renderizarDashboard();
 
             const exito = await actualizarTarea(id, { estado: 'Cumplida' });
             if (exito) {
@@ -4130,6 +4386,7 @@
             renderizarListaTareas();
             renderizarListaCumplidas();
             renderizarCalendario();
+            renderizarDashboard();
 
             const exito = await actualizarTarea(id, { estado: 'Pendiente' });
             if (exito) {
@@ -4160,6 +4417,7 @@
                     renderizarListaTareas();
                     renderizarListaCumplidas();
                     renderizarCalendario();
+                    renderizarDashboard();
                 }
 
                 const exito = await eliminarTareaById(id);
