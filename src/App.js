@@ -20,6 +20,7 @@ import { verificarTrial } from './services/TrialService.js';
 import { crearTarea, validarTarea, PRIORIDADES, CONTEXTOS } from './models/Task.js';
 import { checkAndPromoteFirstUser, ROLES } from './services/UserService.js';
 import { renderAdminPanel, renderOperatorPanel } from './components/AdminPanel.js';
+import { limpiarEvidenciasExpiradas } from './services/EvidenceService.js';
 
 /**
  * Estado global de la aplicación
@@ -181,7 +182,15 @@ async function iniciarInterfazPrincipal(user) {
     configurarEventosGlobales();
 
     appState.initialized = true;
-    console.log('Aplicación principal iniciada - Versión 1.3 (Layout Final)');
+    console.log('Aplicación principal iniciada - Versión 1.4 (Evidencia PDF)');
+
+    // Limpieza de evidencias expiradas (30 días) en background
+    try {
+        const todasLasTareas = obtenerTareasActuales();
+        await limpiarEvidenciasExpiradas(todasLasTareas, appState.viewingUserId);
+    } catch (err) {
+        console.warn('[App] ⚠️ Error limpiando evidencias expiradas:', err.message);
+    }
 }
 
 /**
@@ -201,9 +210,12 @@ function renderizarEstructura(user) {
             </div>
         </div>
       </div>
-      <div class="header-right" style="display: flex; align-items: center; gap: var(--space-2);">
-        <div style="font-size: var(--font-size-xs); color: var(--color-gray-600); text-align: right; display: none; @media(min-width: 600px){display: block;}">
-            Hola, ${user.displayName || user.email.split('@')[0]}
+      <div class="header-right" style="display: flex; align-items: center; gap: var(--space-4);">
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <div style="font-size: var(--font-size-sm); color: var(--color-gray-700); font-weight: 600; text-align: right;">
+                Hola, ${user.displayName || user.email.split('@')[0]}
+            </div>
+            <div id="voice-container"></div>
         </div>
         
         <!-- Botones Modo (Header) -->
@@ -232,16 +244,8 @@ function renderizarEstructura(user) {
       <div class="main-content">
         <div id="calendar-container"></div>
         
-        <div class="card" style="margin-top: var(--space-6);">
-          <div class="card-header">
-            <h3 class="card-title">🎤 Control por Voz</h3>
-          </div>
-          <div id="trial-banner" style="margin-bottom: var(--space-3);"></div>
-          <div id="voice-container"></div>
-          
-          <div id="ai-response" class="day-summary hidden" style="margin-top: var(--space-4);">
-          </div>
-        </div>
+        <div id="trial-banner" style="margin-bottom: var(--space-3);"></div>
+        <div id="ai-response" class="day-summary hidden" style="margin-top: var(--space-4);"></div>
       </div>
       
       <aside class="sidebar">

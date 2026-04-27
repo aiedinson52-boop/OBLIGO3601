@@ -1,6 +1,7 @@
 // Configuración de Firebase
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import {
     initializeFirestore,
     persistentLocalCache,
@@ -22,6 +23,7 @@ const app = initializeApp(firebaseConfig);
 
 // Inicializar servicios
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 // Firebase SDK v10: la persistencia offline se configura DENTRO de initializeFirestore
 // mediante persistentLocalCache (reemplaza a la antigua enableIndexedDbPersistence)
@@ -39,6 +41,6 @@ try {
     db = initializeFirestore(app, {});
 }
 
-export { auth, db, firebaseConfig };
+export { auth, db, storage, firebaseConfig };
 
 export default app;

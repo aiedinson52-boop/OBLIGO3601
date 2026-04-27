@@ -575,7 +575,7 @@
             display: block;
             font-size: var(--font-size-sm);
             font-weight: var(--font-weight-medium);
-            color: var(--color-gray-700);
+            color: #ffffff;
             margin-bottom: var(--space-2);
         }
 
@@ -747,7 +747,7 @@
             text-align: center;
             font-size: var(--font-size-xs);
             font-weight: var(--font-weight-semibold);
-            color: var(--color-gray-500);
+            color: #ffffff;
             text-transform: uppercase;
         }
 
@@ -876,7 +876,7 @@
 
         .confirmation-label {
             font-weight: var(--font-weight-medium);
-            color: var(--color-gray-600);
+            color: #ffffff;
         }
 
         .confirmation-value {
@@ -885,7 +885,7 @@
         }
 
         .confirmation-label {
-            color: var(--dark-text-muted);
+            color: #ffffff;
         }
 
         .confirmation-value {
@@ -1087,10 +1087,10 @@
         }
     </style>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 </head>
 
 <body>
@@ -1131,6 +1131,7 @@
         let firebaseApp = null;
         let auth = null;
         let db = null;
+        let storage = null;
         let currentUser = null;
 
         // Verificar si Firebase está configurado
@@ -1145,6 +1146,7 @@
                 firebaseApp = firebase.initializeApp(firebaseConfig);
                 auth = firebase.auth();
                 db = firebase.firestore();
+                storage = firebase.storage();
 
                 // Habilitar persistencia offline
                 db.enablePersistence()
@@ -1165,6 +1167,161 @@
         // ============================================================================
         // ESTADO GLOBAL Y CONSTANTES
         // ============================================================================
+
+        // ============================================================================
+        // SERVICIO DE EVIDENCIAS (PDF - Firebase Storage)
+        // ============================================================================
+        const EVIDENCIA_MAX_SIZE = 300 * 1024; // 300 KB
+        const EVIDENCIA_DIAS_EXPIRACION = 30;
+
+        function diasHastaExpiracion(expiraEnMs) {
+            if (!expiraEnMs) return 0;
+            const ahora = Date.now();
+            const diff = expiraEnMs - ahora;
+            return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+        }
+
+        async function subirEvidencia(file, tareaId, userId) {
+            if (!storage || !db) throw new Error('Firebase no configurado');
+            if (!file) throw new Error('No se seleccionó archivo');
+            if (file.type !== 'application/pdf') throw new Error('Solo se permiten archivos PDF');
+            if (file.size > EVIDENCIA_MAX_SIZE) throw new Error(`El archivo excede el límite de ${EVIDENCIA_MAX_SIZE / 1024} KB. Tamaño: ${(file.size / 1024).toFixed(1)} KB`);
+
+            const timestamp = Date.now();
+            const nombreArchivo = `${tareaId}_${timestamp}.pdf`;
+            const storagePath = `evidencias/${userId}/${nombreArchivo}`;
+            const storageRef = storage.ref(storagePath);
+            const expiraEn = timestamp + (EVIDENCIA_DIAS_EXPIRACION * 24 * 60 * 60 * 1000);
+
+            const metadata = {
+                contentType: 'application/pdf',
+                customMetadata: {
+                    tareaId: tareaId,
+                    userId: userId,
+                    nombreOriginal: file.name,
+                    expiraEn: expiraEn.toString()
+                }
+            };
+
+            await storageRef.put(file, metadata);
+            const url = await storageRef.getDownloadURL();
+
+            const evidenciaData = {
+                url: url,
+                storagePath: storagePath,
+                nombreOriginal: file.name,
+                tamano: file.size,
+                subidoEn: timestamp,
+                expiraEn: expiraEn
+            };
+
+            // Guardar metadata en la tarea de Firestore
+            await db.collection('users').doc(userId).collection('tasks').doc(tareaId).update({
+                evidencia: evidenciaData
+            });
+
+            // Actualizar en el estado local
+            const tarea = appState.tareas.find(t => t.id === tareaId);
+            if (tarea) tarea.evidencia = evidenciaData;
+
+            console.log('[Evidencia] ✅ PDF subido:', file.name);
+            return evidenciaData;
+        }
+
+        async function eliminarEvidenciaStorage(storagePath, tareaId, userId) {
+            if (!storage || !db) throw new Error('Firebase no configurado');
+
+            try {
+                await storage.ref(storagePath).delete();
+            } catch (e) {
+                console.warn('[Evidencia] Archivo ya no existe en Storage:', e.message);
+            }
+
+            await db.collection('users').doc(userId).collection('tasks').doc(tareaId).update({
+                evidencia: firebase.firestore.FieldValue.delete()
+            });
+
+            const tarea = appState.tareas.find(t => t.id === tareaId);
+            if (tarea) delete tarea.evidencia;
+
+            console.log('[Evidencia] 🗑️ Evidencia eliminada para tarea:', tareaId);
+        }
+
+        // Función global para adjuntar evidencia (usada por botones inline)
+        window.adjuntarEvidencia = function(tareaId) {
+            if (!currentUser) { alert('Debes iniciar sesión'); return; }
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/pdf';
+            input.style.display = 'none';
+
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const btn = document.querySelector(`[data-ev-upload="${tareaId}"]`);
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳...'; }
+
+                try {
+                    await subirEvidencia(file, tareaId, currentUser.uid);
+                    renderizarListaTareas();
+                } catch (error) {
+                    console.error('[Evidencia] Error:', error);
+                    alert(error.message);
+                    if (btn) { btn.disabled = false; btn.innerHTML = '📎 Evidencia'; }
+                }
+                input.remove();
+            });
+
+            document.body.appendChild(input);
+            input.click();
+        };
+
+        window.verEvidencia = function(url) {
+            window.open(url, '_blank');
+        };
+
+        window.eliminarEvidenciaTarea = async function(tareaId) {
+            if (!currentUser) return;
+            const tarea = appState.tareas.find(t => t.id === tareaId);
+            if (!tarea || !tarea.evidencia) return;
+            if (!confirm('¿Desea eliminar la evidencia adjunta?')) return;
+
+            try {
+                await eliminarEvidenciaStorage(tarea.evidencia.storagePath, tareaId, currentUser.uid);
+                renderizarListaTareas();
+            } catch (error) {
+                console.error('[Evidencia] Error al eliminar:', error);
+                alert('Error al eliminar: ' + error.message);
+            }
+        };
+
+        function renderBotonEvidencia(tarea) {
+            if (tarea.evidencia && tarea.evidencia.url) {
+                const dias = diasHastaExpiracion(tarea.evidencia.expiraEn);
+                const colorDias = dias <= 5 ? '#ef4444' : dias <= 15 ? '#f59e0b' : '#10b981';
+                return `
+                    <span style="display: inline-flex; align-items: center; gap: 3px; margin-left: 6px;">
+                        <button onclick="verEvidencia('${tarea.evidencia.url}')" title="Ver: ${tarea.evidencia.nombreOriginal}" style="
+                            background: linear-gradient(135deg, #10b981, #059669);
+                            color: white; border: none; padding: 2px 6px;
+                            border-radius: 4px; font-size: 0.65rem; cursor: pointer;
+                        ">📎 PDF</button>
+                        <span style="font-size: 0.55rem; color: ${colorDias};">${dias}d</span>
+                        <button onclick="eliminarEvidenciaTarea('${tarea.id}')" title="Eliminar evidencia" style="
+                            background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.6rem; padding: 1px;
+                        ">✕</button>
+                    </span>
+                `;
+            }
+            return `
+                <button data-ev-upload="${tarea.id}" onclick="adjuntarEvidencia('${tarea.id}')" title="Adjuntar evidencia PDF" style="
+                    background: linear-gradient(135deg, #6366f1, #4f46e5);
+                    color: white; border: none; padding: 2px 6px;
+                    border-radius: 4px; font-size: 0.65rem; cursor: pointer; margin-left: 6px;
+                ">📎 Evidencia</button>
+            `;
+        }
 
 
 
@@ -1289,7 +1446,9 @@
 
                     renderizarCalendario();
                     renderizarListaTareas();
+                    renderizarListaPendientes();
                     renderizarListaCumplidas();
+                    renderizarDashboard();
                     if (window.checkAlarms) checkAlarms();
                 }, (error) => {
                     console.error('❌ Error en sincronización de tareas:', error);
@@ -2037,7 +2196,7 @@
                 voiceBtn.style.cursor = 'pointer';
                 voiceBtn.title = `Control por Voz - ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} restantes`;
                 if (voiceLabel) {
-                    voiceLabel.innerHTML = `Control por Voz<br><span style="font-size: 9px; opacity: 0.8;">${diasRestantes} días</span>`;
+                    voiceLabel.innerHTML = `CONTROL<br>DE VOZ`;
                 }
             } else {
                 voiceBtn.disabled = true;
@@ -2285,14 +2444,30 @@
                                 <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">${fechaString}</p>
                             </div>
                         </div>
-                        <div class="user-controls" style="display: flex; gap: 15px; align-items: center;">
-                            <div id="subscription-badge" style="display: none; padding: 5px 10px; background: #d1fae5; color: #065f46; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">PREMIUM</div>
-                            <button onclick="abrirPago()" class="btn-subscribe" style="background: #4f46e5; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                Gestionar Suscripción
-                            </button>
-                            <button onclick="cerrarSesion()" style="background: transparent; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; cursor: pointer; color: #374151;">
-                                Salir
-                            </button>
+                        <div class="user-controls" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div id="subscription-badge" style="display: none; padding: 4px 12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; font-size: 0.75rem; font-weight: 700;">PREMIUM</div>
+                                <button onclick="abrirPago()" class="btn-subscribe" style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);">
+                                    Gestionar Plan
+                                </button>
+                                <button onclick="cerrarSesion()" style="background: white; border: 1px solid #e5e7eb; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: #374151; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;">
+                                    Salir
+                                </button>
+                            </div>
+                            
+                            <div id="voice-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: 10px;">
+                                <button id="voice-button" title="Control por Voz" style="width: 42px; height: 42px; background: linear-gradient(135deg, #6366f1, #4338ca); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                        <line x1="12" x2="12" y1="19" y2="22"/>
+                                    </svg>
+                                </button>
+                                <div id="transcript-header" style="display: none; background: #1e293b; color: white; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 500; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                                    <span id="transcript">🎤 Escuchando...</span>
+                                </div>
+                                <span style="font-size: 10px; color: #6366f1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Control por Voz</span>
+                            </div>
                         </div>
                     </header>
 
@@ -2326,17 +2501,7 @@
 
                         <!-- Columna Derecha: Asistente de Voz -->
                         <section class="right-column" style="background: #f9fafb; padding: 25px; border-radius: 12px; height: fit-content;">
-                            <div style="text-align: center; margin-bottom: 20px;">
-                                <div id="voice-button" style="width: 80px; height: 80px; background: #ef4444; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
-                                    <span style="font-size: 2rem;">🎙️</span>
-                                </div>
-                                <p id="voice-status" style="margin-top: 15px; color: #4b5563; font-weight: 500;">Toque para hablar</p>
-                            </div>
-
-                            <div id="transcript-container" style="background: white; padding: 15px; border-radius: 8px; min-height: 100px; border: 1px solid #e5e7eb;">
-                                <div id="transcript-header" style="display: none; color: #4f46e5; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">ESCUCHANDO...</div>
-                                <div id="transcript" style="color: #374151; font-size: 0.95rem; line-height: 1.5;"></div>
-                            </div>
+                            <div id="ai-response" style="margin-bottom: 20px;"></div>
 
                             <div class="tips" style="margin-top: 20px; font-size: 0.85rem; color: #6b7280;">
                                 <p><strong>Prueba decir:</strong></p>
@@ -2501,8 +2666,9 @@
                 li.innerHTML = `
                     <div style="flex: 1;">
                         <div style="font-weight: 500; ${tituloStyle}">${tarea.titulo}</div>
-                        <div style="font-size: 0.8rem; color: #6b7280;">
+                        <div style="font-size: 0.8rem; color: #6b7280; display: flex; align-items: center; flex-wrap: wrap;">
                             ${tarea.hora} • ${tarea.prioridad} • ${tarea.contexto}
+                            ${renderBotonEvidencia(tarea)}
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
@@ -2783,9 +2949,13 @@
                     nuevaHora = (nuevaHora + 1) % 24;
                 }
                 tarea.hora = `${nuevaHora.toString().padStart(2, '0')}:${nuevoMin.toString().padStart(2, '0')}`;
-                guardarTareas();
+                
+                // Asegurar que pueda volver a sonar (quitar de alertadas)
+                tareasAlertadas.delete(tareaId);
+                localStorage.setItem('tareasAlertadas', JSON.stringify([...tareasAlertadas]));
+
                 actualizarTarea(tarea.id, { hora: tarea.hora });
-                renderizarListaTareas();
+                // No llamar a renderizarListaTareas() para no pisar la lista de pendientes del sidebar
             }
 
             mostrarToast('Alarma pospuesta 5 minutos', 'info');
@@ -2824,9 +2994,12 @@
                 tarea.fecha = `${fechaTarea.getFullYear()}-${(fechaTarea.getMonth() + 1).toString().padStart(2, '0')}-${fechaTarea.getDate().toString().padStart(2, '0')}`;
                 tarea.hora = `${fechaTarea.getHours().toString().padStart(2, '0')}:${fechaTarea.getMinutes().toString().padStart(2, '0')}`;
 
-                guardarTareas();
+                // Asegurar que pueda volver a sonar (quitar de alertadas)
+                tareasAlertadas.delete(tareaId);
+                localStorage.setItem('tareasAlertadas', JSON.stringify([...tareasAlertadas]));
+
                 actualizarTarea(tarea.id, { fecha: tarea.fecha, hora: tarea.hora });
-                renderizarListaTareas();
+                // No llamar a renderizarListaTareas() para no pisar la lista de pendientes del sidebar
             }
 
             // Mensaje según duración
@@ -2986,35 +3159,46 @@
               </button>
             </div>
           </div>
-          ${esMobileAPK ? `
-          <div id="voice-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-3);">
-            <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" x2="12" y1="19" y2="22"/>
-              </svg>
-            </button>
-            <div id="transcript-header" style="
-              display: none;
-              background: rgba(30, 41, 59, 0.8);
-              backdrop-filter: blur(10px);
-              border-radius: 12px;
-              padding: 8px 12px;
-              max-width: 200px;
-              border: 1px solid rgba(255,255,255,0.2);
-            ">
-              <span id="transcript" style="
-                color: #ffffff;
-                font-size: 12px;
-                font-weight: 500;
-                display: block;
-              ">🎤 Escuchando...</span>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);">
+            ${esMobileAPK ? `
+            <div id="voice-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-3);">
+              <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+              </button>
+              <div id="transcript-header" style="
+                display: none;
+                background: rgba(30, 41, 59, 0.8);
+                backdrop-filter: blur(10px);
+                border-radius: 12px;
+                padding: 8px 12px;
+                max-width: 200px;
+                border: 1px solid rgba(255,255,255,0.2);
+              ">
+                <span id="transcript" style="
+                  color: #ffffff;
+                  font-size: 12px;
+                  font-weight: 500;
+                  display: block;
+                ">🎤 Escuchando...</span>
+              </div>
+              <span id="voice-label" style="font-size: 10px; color: #ffffff; font-weight: 700; text-align: center; line-height: 1.1; letter-spacing: 0.5px; text-transform: uppercase;">CONTROL<br>DE VOZ</span>
             </div>
-            <span id="voice-label" style="font-size: 10px; color: #ffffff; font-weight: 600; text-align: right; line-height: 1.1;">Control por Voz</span>
+            ` : ''}
+            
+            <div id="manual-task-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-2);">
+              <button onclick="abrirModalTareaManual()" class="manual-task-btn" id="manual-task-button" title="Tarea Manual" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, #22c55e, #15803d); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(34, 197, 94, 0.7), 0 0 15px rgba(34, 197, 94, 0.4)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(34, 197, 94, 0.4)'">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <span id="manual-task-label" style="font-size: 10px; color: #4ade80; font-weight: 700; text-align: center; line-height: 1.1; letter-spacing: 0.5px; text-transform: uppercase;">TAREA<br>MANUAL</span>
+            </div>
           </div>
-          ` : ''}
-        </div>
         ` : ''}
       </div>
     </header>
@@ -3057,6 +3241,7 @@
             renderizarCalendario();
             renderizarVoice();
             renderizarListaTareas();
+            renderizarListaPendientes();
             renderizarListaCumplidas();
             renderizarDashboard();
         }
@@ -3083,9 +3268,9 @@
                 <div class="dashboard-card animate-in">
                     <div class="chart-wrapper">
                         <svg width="100%" height="100%" viewBox="0 0 100 100">
-                            <!-- Círculo de fondo (Gray track) -->
+                            <!-- Círculo de fondo (Pendientes - Amber/Orange) -->
                             <circle cx="50" cy="50" r="${radius}" fill="transparent" 
-                                stroke="rgba(255,255,255,0.06)" stroke-width="10" />
+                                stroke="rgba(245, 158, 11, 0.15)" stroke-width="12" />
                             
                             <!-- Gradiente personalizado -->
                             <defs>
@@ -3406,8 +3591,35 @@
             window.XLSX.writeFile(wb, `mis_tareas_cumplidas_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        function renderizarListaTareas() {
+        function exportarPendientesExcel() {
+            if (!window.XLSX) {
+                mostrarToast('La librería de Excel no está cargada.', 'error');
+                return;
+            }
+            const pendientes = appState.tareas.filter(t => t.estado === 'Pendiente');
+            if (pendientes.length === 0) {
+                mostrarToast('No hay tareas pendientes para exportar.', 'info');
+                return;
+            }
+            const data = pendientes.map(t => ({
+                Titulo: t.titulo,
+                Fecha: t.fecha,
+                Hora: t.hora,
+                Prioridad: t.prioridad,
+                Contexto: t.contexto,
+                Estado: t.estado,
+                Descripcion: t.descripcion || ''
+            }));
+            const ws = window.XLSX.utils.json_to_sheet(data);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Tareas Pendientes");
+            window.XLSX.writeFile(wb, `mis_tareas_pendientes_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function renderizarListaPendientes() {
             const container = document.getElementById('task-list-container');
+            if (!container) return;
+
             // FILTRO ESTRICTO: Solo pendientes
             const pendientes = appState.tareas.filter(t => t.estado === 'Pendiente');
 
@@ -3420,9 +3632,14 @@
 
             container.innerHTML = `
     <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">📋 Mis Tareas Pendientes</h3>
-        <span style="font-size: var(--font-size-sm); color: var(--color-gray-500);">${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}</span>
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2);">
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <h3 class="card-title">📋 Mis Tareas Pendientes</h3>
+            <span style="font-size: var(--font-size-xs); color: var(--color-gray-500); background: rgba(0,0,0,0.05); padding: 2px 10px; border-radius: 12px; font-weight: 600;">${pendientes.length} pendientes</span>
+        </div>
+        <button class="btn btn-secondary" onclick="exportarPendientesExcel()" style="font-size: var(--font-size-xs); padding: var(--space-1) var(--space-4); border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            📥 Descargar Excel
+        </button>
       </div>
       <div id="lista-tareas" style="max-height: 450px; overflow-y: auto; padding-right: var(--space-2);">
         ${tareasOrdenadas.length === 0 ? `
@@ -4263,7 +4480,7 @@
           <span class="confirmation-value">${info.prioridad.charAt(0).toUpperCase() + info.prioridad.slice(1)}</span>
         </div>
       </div>
-      <p style="margin-bottom: var(--space-4); color: var(--color-gray-600);">¿Desea confirmarla y guardarla?</p>
+      <p style="margin-bottom: var(--space-4); color: #ffffff;">¿Desea confirmarla y guardarla?</p>
       <div class="confirmation-actions">
         <button class="btn btn-secondary" id="btn-cancel">Cancelar</button>
         <button class="btn btn-secondary" id="btn-modify">Modificar</button>
@@ -4688,6 +4905,89 @@
         /**
          * Guarda los cambios realizados en el modal de edición
          */
+        /**
+         * Abre el modal para crear una tarea de forma manual
+         */
+        window.abrirModalTareaManual = function () {
+            const hoy = new Date();
+            const fechaStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+            const horaStr = String(hoy.getHours()).padStart(2, '0') + ':' + String(hoy.getMinutes()).padStart(2, '0');
+
+            const dialog = document.getElementById('confirmation-dialog');
+
+            dialog.innerHTML = `
+    <div class="confirmation-content" style="max-width: 520px;">
+      <h2 class="confirmation-title">📝 Nueva Tarea Manual</h2>
+      <form id="form-manual" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="manual-titulo">Texto de la tarea:</label>
+          <input type="text" id="manual-titulo" class="form-input" placeholder="Ej: Pagar el recibo de energía" required 
+            style="color: var(--color-gray-800); background: var(--color-white);">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="manual-fecha">Fecha:</label>
+            <input type="date" id="manual-fecha" class="form-input" value="${fechaStr}" required
+              style="color: var(--color-gray-800); background: var(--color-white);">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="manual-hora">Hora:</label>
+            <input type="time" id="manual-hora" class="form-input" value="${horaStr}" required
+              style="color: var(--color-gray-800); background: var(--color-white);">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="manual-prioridad">Prioridad:</label>
+          <select id="manual-prioridad" class="form-input form-select" 
+            style="color: var(--color-gray-800); background: var(--color-white);">
+            <option value="baja">🟢 Baja</option>
+            <option value="media" selected>🟡 Media</option>
+            <option value="alta">🔴 Alta</option>
+          </select>
+        </div>
+      </form>
+      <div class="confirmation-actions" style="margin-top: var(--space-6);">
+        <button class="btn btn-secondary" onclick="cerrarModalEdicion()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarTareaManual()">🚀 Crear Tarea</button>
+      </div>
+    </div>
+  `;
+
+            dialog.classList.add('active');
+
+            setTimeout(() => {
+                document.getElementById('manual-titulo').focus();
+            }, 100);
+        };
+
+        /**
+         * Guarda la tarea creada en el modal manual
+         */
+        window.guardarTareaManual = async function () {
+            const titulo = document.getElementById('manual-titulo').value.trim();
+            const fecha = document.getElementById('manual-fecha').value;
+            const hora = document.getElementById('manual-hora').value;
+            const prioridad = document.getElementById('manual-prioridad').value;
+
+            if (!titulo) {
+                mostrarToast('El texto de la tarea es obligatorio', 'error');
+                document.getElementById('manual-titulo').focus();
+                return;
+            }
+
+            const nuevaTarea = {
+                titulo: titulo,
+                fecha: fecha,
+                hora: hora,
+                prioridad: prioridad,
+                estado: 'Pendiente'
+            };
+
+            await agregarTarea(nuevaTarea);
+            cerrarModalEdicion();
+            mostrarToast('Tarea creada correctamente', 'success');
+        };
+
         window.guardarEdicionTarea = async function () {
             const id = document.getElementById('edit-tarea-id').value;
             const titulo = document.getElementById('edit-titulo').value.trim();

@@ -210,6 +210,17 @@
             border-radius: var(--radius-2xl);
             border: 1px solid var(--glass-border);
             box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .app-header {
+                padding: var(--space-3) var(--space-4);
+                margin-bottom: var(--space-4);
+            }
+            .app-header img {
+                height: 40px !important;
+            }
         }
 
         .app-title {
@@ -378,7 +389,7 @@
             display: block;
             font-size: var(--font-size-sm);
             font-weight: var(--font-weight-medium);
-            color: var(--color-gray-700);
+            color: #ffffff;
             margin-bottom: var(--space-2);
         }
 
@@ -550,7 +561,7 @@
             text-align: center;
             font-size: var(--font-size-xs);
             font-weight: var(--font-weight-semibold);
-            color: var(--color-gray-500);
+            color: #ffffff;
             text-transform: uppercase;
         }
 
@@ -679,7 +690,7 @@
 
         .confirmation-label {
             font-weight: var(--font-weight-medium);
-            color: var(--color-gray-600);
+            color: #ffffff;
         }
 
         .confirmation-value {
@@ -688,7 +699,7 @@
         }
 
         .confirmation-label {
-            color: var(--dark-text-muted);
+            color: #ffffff;
         }
 
         .confirmation-value {
@@ -880,13 +891,141 @@
                 font-size: var(--font-size-xl);
             }
 
-            .confirmation-actions {
-                flex-direction: column;
-            }
+        }
 
-            .confirmation-actions .btn {
-                width: 100%;
+        /* Dashboard Styles Professional */
+        .dashboard-container {
+            margin-top: var(--space-6);
+            margin-bottom: var(--space-6);
+            width: 100%;
+        }
+
+        .dashboard-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius-2xl);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: var(--space-6);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: var(--space-8);
+            align-items: center;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+            color: #ffffff;
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .chart-inner-text {
+            position: absolute;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .percentage-value {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-white);
+            line-height: 1;
+        }
+
+        .percentage-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-3);
+            z-index: 1;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all var(--transition-normal);
+        }
+
+        .stat-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+        }
+
+        .stat-value.completed { color: #10b981; }
+        .stat-value.pending { color: #f59e0b; }
+
+        .progress-mini-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-full);
+            margin-top: var(--space-2);
+            overflow: hidden;
+        }
+
+        .progress-mini-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            border-radius: var(--radius-full);
+            transition: width 1s ease-out;
+        }
+
+        @media (max-width: 640px) {
+            .dashboard-card {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
             }
+            .chart-wrapper { margin: 0 auto; }
+        }
+
+        .animate-in {
+            animation: fadeInSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 
@@ -894,6 +1033,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 </head>
 
 <body>
@@ -934,6 +1074,7 @@
         let firebaseApp = null;
         let auth = null;
         let db = null;
+        let storage = null;
         let currentUser = null;
 
         // Verificar si Firebase está configurado
@@ -948,6 +1089,7 @@
                 firebaseApp = firebase.initializeApp(firebaseConfig);
                 auth = firebase.auth();
                 db = firebase.firestore();
+                storage = firebase.storage();
                 console.log('✅ Firebase inicializado correctamente');
             } catch (error) {
                 console.error('❌ Error inicializando Firebase:', error);
@@ -957,6 +1099,149 @@
         // ============================================================================
         // ESTADO GLOBAL Y CONSTANTES
         // ============================================================================
+
+        // ============================================================================
+        // SERVICIO DE EVIDENCIAS (PDF - Firebase Storage)
+        // ============================================================================
+        const EVIDENCIA_MAX_SIZE = 300 * 1024; // 300 KB
+        const EVIDENCIA_DIAS_EXPIRACION = 30;
+
+        function diasHastaExpiracion(expiraEnMs) {
+            if (!expiraEnMs) return 0;
+            const ahora = Date.now();
+            const diff = expiraEnMs - ahora;
+            return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+        }
+
+        async function subirEvidencia(file, tareaId, userId) {
+            if (!storage || !db) throw new Error('Firebase no configurado');
+            if (!file) throw new Error('No se seleccionó archivo');
+            if (file.type !== 'application/pdf') throw new Error('Solo se permiten archivos PDF');
+            if (file.size > EVIDENCIA_MAX_SIZE) throw new Error(`El archivo excede el límite de ${EVIDENCIA_MAX_SIZE / 1024} KB. Tamaño: ${(file.size / 1024).toFixed(1)} KB`);
+
+            const timestamp = Date.now();
+            const nombreArchivo = `${tareaId}_${timestamp}.pdf`;
+            const storagePath = `evidencias/${userId}/${nombreArchivo}`;
+            const storageRef = storage.ref(storagePath);
+            const expiraEn = timestamp + (EVIDENCIA_DIAS_EXPIRACION * 24 * 60 * 60 * 1000);
+
+            const metadata = {
+                contentType: 'application/pdf',
+                customMetadata: {
+                    tareaId: tareaId,
+                    userId: userId,
+                    nombreOriginal: file.name,
+                    expiraEn: expiraEn.toString()
+                }
+            };
+
+            await storageRef.put(file, metadata);
+            const url = await storageRef.getDownloadURL();
+
+            const evidenciaData = {
+                url: url,
+                storagePath: storagePath,
+                nombreOriginal: file.name,
+                tamano: file.size,
+                subidoEn: timestamp,
+                expiraEn: expiraEn
+            };
+
+            await db.collection('users').doc(userId).collection('tasks').doc(tareaId).update({
+                evidencia: evidenciaData
+            });
+
+            const tarea = appState.tareas.find(t => t.id === tareaId);
+            if (tarea) tarea.evidencia = evidenciaData;
+
+            console.log('[Evidencia] ✅ PDF subido:', file.name);
+            return evidenciaData;
+        }
+
+        async function eliminarEvidenciaStorage(storagePath, tareaId, userId) {
+            if (!storage || !db) throw new Error('Firebase no configurado');
+            try {
+                await storage.ref(storagePath).delete();
+            } catch (e) {
+                console.warn('[Evidencia] Archivo ya no existe en Storage:', e.message);
+            }
+            await db.collection('users').doc(userId).collection('tasks').doc(tareaId).update({
+                evidencia: firebase.firestore.FieldValue.delete()
+            });
+            const tarea = appState.tareas.find(t => t.id === tareaId);
+            if (tarea) delete tarea.evidencia;
+            console.log('[Evidencia] 🗑️ Evidencia eliminada para tarea:', tareaId);
+        }
+
+        window.adjuntarEvidencia = function(tareaId) {
+            if (!currentUser) { alert('Debes iniciar sesión'); return; }
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/pdf';
+            input.style.display = 'none';
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const btn = document.querySelector(`[data-ev-upload="${tareaId}"]`);
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳...'; }
+                try {
+                    await subirEvidencia(file, tareaId, currentUser.uid);
+                    renderizarListaTareas();
+                } catch (error) {
+                    console.error('[Evidencia] Error:', error);
+                    alert(error.message);
+                    if (btn) { btn.disabled = false; btn.innerHTML = '📎 Evidencia'; }
+                }
+                input.remove();
+            });
+            document.body.appendChild(input);
+            input.click();
+        };
+
+        window.verEvidencia = function(url) {
+            window.open(url, '_blank');
+        };
+
+        window.eliminarEvidenciaTarea = async function(tareaId) {
+            if (!currentUser) return;
+            const tarea = appState.tareas.find(t => t.id === tareaId);
+            if (!tarea || !tarea.evidencia) return;
+            if (!confirm('¿Desea eliminar la evidencia adjunta?')) return;
+            try {
+                await eliminarEvidenciaStorage(tarea.evidencia.storagePath, tareaId, currentUser.uid);
+                renderizarListaTareas();
+            } catch (error) {
+                console.error('[Evidencia] Error al eliminar:', error);
+                alert('Error al eliminar: ' + error.message);
+            }
+        };
+
+        function renderBotonEvidencia(tarea) {
+            if (tarea.evidencia && tarea.evidencia.url) {
+                const dias = diasHastaExpiracion(tarea.evidencia.expiraEn);
+                const colorDias = dias <= 5 ? '#ef4444' : dias <= 15 ? '#f59e0b' : '#10b981';
+                return `
+                    <span style="display: inline-flex; align-items: center; gap: 3px; margin-left: 6px;">
+                        <button onclick="verEvidencia('${tarea.evidencia.url}')" title="Ver: ${tarea.evidencia.nombreOriginal}" style="
+                            background: linear-gradient(135deg, #10b981, #059669);
+                            color: white; border: none; padding: 2px 6px;
+                            border-radius: 4px; font-size: 0.65rem; cursor: pointer;
+                        ">📎 PDF</button>
+                        <span style="font-size: 0.55rem; color: ${colorDias};">${dias}d</span>
+                        <button onclick="eliminarEvidenciaTarea('${tarea.id}')" title="Eliminar evidencia" style="
+                            background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.6rem; padding: 1px;
+                        ">✕</button>
+                    </span>
+                `;
+            }
+            return `
+                <button data-ev-upload="${tarea.id}" onclick="adjuntarEvidencia('${tarea.id}')" title="Adjuntar evidencia PDF" style="
+                    background: linear-gradient(135deg, #6366f1, #4f46e5);
+                    color: white; border: none; padding: 2px 6px;
+                    border-radius: 4px; font-size: 0.65rem; cursor: pointer; margin-left: 6px;
+                ">📎 Evidencia</button>
+            `;
+        }
 
 
 
@@ -1081,6 +1366,9 @@
 
                     renderizarCalendario();
                     renderizarListaTareas();
+                    renderizarListaPendientes();
+                    renderizarListaCumplidas();
+                    renderizarDashboard();
                     if (window.checkAlarms) checkAlarms();
                 }, (error) => {
                     console.error('❌ Error en sincronización de tareas:', error);
@@ -1596,7 +1884,7 @@
                 voiceBtn.style.cursor = 'pointer';
                 voiceBtn.title = `Control por Voz - ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''} restantes`;
                 if (voiceLabel) {
-                    voiceLabel.innerHTML = `Control por Voz<br><span style="font-size: 9px; opacity: 0.8;">${diasRestantes} días</span>`;
+                    voiceLabel.innerHTML = `CONTROL<br>DE VOZ`;
                 }
             } else {
                 voiceBtn.disabled = true;
@@ -2060,8 +2348,9 @@
                 li.innerHTML = `
                     <div style="flex: 1;">
                         <div style="font-weight: 500; ${tituloStyle}">${tarea.titulo}</div>
-                        <div style="font-size: 0.8rem; color: #6b7280;">
+                        <div style="font-size: 0.8rem; color: #6b7280; display: flex; align-items: center; flex-wrap: wrap;">
                             ${tarea.hora} • ${tarea.prioridad} • ${tarea.contexto}
+                            ${renderBotonEvidencia(tarea)}
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
@@ -2342,8 +2631,14 @@
                     nuevaHora = (nuevaHora + 1) % 24;
                 }
                 tarea.hora = `${nuevaHora.toString().padStart(2, '0')}:${nuevoMin.toString().padStart(2, '0')}`;
-                guardarTareas();
-                renderizarListaTareas();
+                
+                // Asegurar que pueda volver a sonar (quitar de alertadas)
+                tareasAlertadas.delete(tareaId);
+                localStorage.setItem('tareasAlertadas', JSON.stringify([...tareasAlertadas]));
+
+                actualizarTarea(tarea.id, { hora: tarea.hora });
+                // No llamar a renderizarListaTareas() para no pisar la lista de pendientes del sidebar
+                // El listener de Firebase (onSnapshot) se encargará de re-renderizar todo correctamente
             }
 
             mostrarToast('Alarma pospuesta 5 minutos', 'info');
@@ -2382,8 +2677,12 @@
                 tarea.fecha = `${fechaTarea.getFullYear()}-${(fechaTarea.getMonth() + 1).toString().padStart(2, '0')}-${fechaTarea.getDate().toString().padStart(2, '0')}`;
                 tarea.hora = `${fechaTarea.getHours().toString().padStart(2, '0')}:${fechaTarea.getMinutes().toString().padStart(2, '0')}`;
 
-                guardarTareas();
-                renderizarListaTareas();
+                // Asegurar que pueda volver a sonar (quitar de alertadas)
+                tareasAlertadas.delete(tareaId);
+                localStorage.setItem('tareasAlertadas', JSON.stringify([...tareasAlertadas]));
+
+                actualizarTarea(tarea.id, { fecha: tarea.fecha, hora: tarea.hora });
+                // No llamar a renderizarListaTareas() para no pisar la lista de pendientes del sidebar
             }
 
             // Mensaje según duración
@@ -2494,83 +2793,68 @@
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: var(--space-4);">
-        ${!esMobileAPK ? `
-        <div id="voice-header-container" style="display: flex; align-items: center; gap: var(--space-3);">
-          <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 50px; height: 50px; flex-shrink: 0;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" x2="12" y1="19" y2="22"/>
-            </svg>
-          </button>
-          <div id="transcript-header" style="
-            display: none;
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 10px 16px;
-            max-width: 300px;
-            min-width: 150px;
-            border: 1px solid rgba(255,255,255,0.2);
-          ">
-            <span id="transcript" style="
-              color: #ffffff;
-              font-size: 14px;
-              font-weight: 500;
-              display: block;
-              text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            ">🎤 Escuchando...</span>
-          </div>
-          <span id="voice-label" style="font-size: 11px; color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.3); white-space: nowrap;">Control por Voz</span>
-        </div>
-        ` : ''}
         <div id="datetime-display" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
           <span id="current-date" style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
           <span id="current-time" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: #ffffff; font-family: 'Consolas', monospace; text-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
         </div>
         ${currentUser ? `
-        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);">
-          <div id="user-menu" style="display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3);">
-            <div style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: var(--radius-full); padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-2); border: 1px solid rgba(255,255,255,0.3);">
-              <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); min-width: 180px;">
+          <div id="user-menu" style="display: flex; align-items: center; gap: var(--space-2);">
+            <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: var(--radius-full); padding: 6px 12px; display: flex; align-items: center; gap: var(--space-3); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+              <div style="width: 30px; height: 30px; background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                 ${(currentUser.displayName || currentUser.email || 'U').charAt(0).toUpperCase()}
               </div>
-              <span style="color: white; font-size: var(--font-size-sm); font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="color: white; font-size: 13px; font-weight: 600; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
                 ${currentUser.displayName || currentUser.email.split('@')[0]}
               </span>
-              <button onclick="cerrarSesion()" style="background: rgba(255,255,255,0.2); border: none; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); color: white; cursor: pointer; font-size: 12px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Cerrar sesión">
+              <button onclick="cerrarSesion()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 4px 10px; color: #fee2e2; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.4)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'" title="Cerrar sesión">
                 Salir
               </button>
             </div>
           </div>
-          ${esMobileAPK ? `
-          <div id="voice-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-3);">
-            <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" x2="12" y1="19" y2="22"/>
-              </svg>
-            </button>
-            <div id="transcript-header" style="
-              display: none;
-              background: rgba(30, 41, 59, 0.8);
-              backdrop-filter: blur(10px);
-              border-radius: 12px;
-              padding: 8px 12px;
-              max-width: 200px;
-              border: 1px solid rgba(255,255,255,0.2);
-            ">
-              <span id="transcript" style="
-                color: #ffffff;
-                font-size: 12px;
-                font-weight: 500;
-                display: block;
-              ">🎤 Escuchando...</span>
+          
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); margin-top: 2px;">
+            <div id="voice-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-2);">
+              <button class="voice-btn" id="voice-button" title="Control por Voz" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(99, 102, 241, 0.6)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(99, 102, 241, 0.4)'">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+              </button>
+              <div id="transcript-header" style="
+                display: none;
+                background: rgba(15, 23, 42, 0.9);
+                backdrop-filter: blur(10px);
+                border-radius: 10px;
+                padding: 6px 12px;
+                max-width: 180px;
+                border: 1px solid rgba(255,255,255,0.2);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+              ">
+                <span id="transcript" style="
+                  color: #ffffff;
+                  font-size: 11px;
+                  font-weight: 500;
+                  display: block;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  ">🎤 Escuchando...</span>
+              </div>
+              <span id="voice-label" style="font-size: 10px; color: var(--color-primary-300); font-weight: 700; text-align: center; line-height: 1.1; letter-spacing: 0.5px; text-transform: uppercase;">CONTROL<br>DE VOZ</span>
             </div>
-            <span id="voice-label" style="font-size: 10px; color: #ffffff; font-weight: 600; text-align: right; line-height: 1.1;">Control por Voz</span>
+            
+            <div id="manual-task-header-container" style="display: flex; align-items: center; flex-direction: row-reverse; gap: var(--space-2);">
+              <button onclick="abrirModalTareaManual()" class="manual-task-btn" id="manual-task-button" title="Tarea Manual" style="width: 44px; height: 44px; flex-shrink: 0; background: linear-gradient(135deg, #22c55e, #15803d); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; color: white; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(34, 197, 94, 0.7), 0 0 15px rgba(34, 197, 94, 0.4)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(34, 197, 94, 0.4)'">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <span id="manual-task-label" style="font-size: 10px; color: #4ade80; font-weight: 700; text-align: center; line-height: 1.1; letter-spacing: 0.5px; text-transform: uppercase;">TAREA<br>MANUAL</span>
+            </div>
           </div>
-          ` : ''}
         </div>
         ` : ''}
       </div>
@@ -2579,6 +2863,7 @@
     <main class="main-layout">
       <div>
         <div id="calendar-container"></div>
+        <div id="dashboard-container"></div>
         
         <div id="day-summary" class="hidden"></div>
       </div>
@@ -2607,13 +2892,17 @@
   `;
 
             // Iniciar reloj en vivo
-            actualizarReloj();
-            setInterval(actualizarReloj, 1000);
+            if (!window.relojInterval) {
+                actualizarReloj();
+                window.relojInterval = setInterval(actualizarReloj, 1000);
+            }
 
             renderizarCalendario();
             renderizarVoice();
             renderizarListaTareas();
+            renderizarListaPendientes();
             renderizarListaCumplidas();
+            renderizarDashboard();
         }
 
         /**
@@ -2788,6 +3077,89 @@
             inicializarReconocimiento();
         }
 
+        /**
+         * Renderiza el Dashboard de Progreso Operativo
+         */
+        function renderizarDashboard() {
+            const container = document.getElementById('dashboard-container');
+            if (!container) return;
+
+            const total = appState.tareas.length;
+            const cumplidas = appState.tareas.filter(t => t.estado === 'Cumplida').length;
+            const pendientes = total - cumplidas;
+            const porcentaje = total > 0 ? Math.round((cumplidas / total) * 100) : 0;
+
+            // SVG Donut
+            const radius = 40;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (porcentaje / 100) * circumference;
+
+            container.innerHTML = `
+                <div class="dashboard-card animate-in" style="margin-top: var(--space-6);">
+                    <div class="chart-wrapper">
+                        <svg width="100%" height="100%" viewBox="0 0 100 100">
+                            <!-- Fondo (Pendientes - Color Naranja suave) -->
+                            <circle cx="50" cy="50" r="${radius}" fill="transparent" 
+                                stroke="rgba(245, 158, 11, 0.15)" stroke-width="12" />
+                            
+                            <defs>
+                                <linearGradient id="donutGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#10b981" />
+                                    <stop offset="100%" stop-color="#34d399" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Progreso (Cumplidas) -->
+                            <circle cx="50" cy="50" r="${radius}" fill="transparent" 
+                                stroke="url(#donutGradient)" stroke-width="12" 
+                                stroke-dasharray="${circumference}" 
+                                stroke-dashoffset="${circumference}" 
+                                stroke-linecap="round" 
+                                transform="rotate(-90 50 50)"
+                                style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);">
+                                <animate attributeName="stroke-dashoffset" 
+                                    from="${circumference}" to="${offset}" 
+                                    dur="1.5s" fill="freeze" />
+                            </circle>
+                        </svg>
+                        <div class="chart-inner-text">
+                            <span class="percentage-value">${porcentaje}%</span>
+                            <span class="percentage-label">Logrado</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-content">
+                        <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 1px;">Progreso Operativo</h4>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">
+                                    <span style="color: #10b981;">●</span> Cumplidas
+                                </div>
+                                <div class="stat-value completed">${cumplidas}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">
+                                    <span style="color: #f59e0b;">●</span> Pendientes
+                                </div>
+                                <div class="stat-value pending">${pendientes}</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 6px; color: rgba(255,255,255,0.5); font-weight: 600;">
+                                <span>EFICIENCIA</span>
+                                <span>${total} TOTAL</span>
+                            </div>
+                            <div class="progress-mini-bar">
+                                <div class="progress-mini-fill" style="width: ${porcentaje}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderizarListaCumplidas() {
             const container = document.getElementById('completed-tasks-container');
             if (!container) return;
@@ -2868,8 +3240,34 @@
             window.XLSX.writeFile(wb, `mis_tareas_cumplidas_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
 
-        function renderizarListaTareas() {
+        function exportarPendientesExcel() {
+            if (!window.XLSX) {
+                mostrarToast('La librería de Excel no está cargada.', 'error');
+                return;
+            }
+            const pendientes = appState.tareas.filter(t => t.estado === 'Pendiente');
+            if (pendientes.length === 0) {
+                mostrarToast('No hay tareas pendientes para exportar.', 'info');
+                return;
+            }
+            const data = pendientes.map(t => ({
+                Titulo: t.titulo,
+                Fecha: t.fecha,
+                Hora: t.hora,
+                Prioridad: t.prioridad,
+                Contexto: t.contexto,
+                Estado: t.estado,
+                Descripcion: t.descripcion || ''
+            }));
+            const ws = window.XLSX.utils.json_to_sheet(data);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Tareas Pendientes");
+            window.XLSX.writeFile(wb, `mis_tareas_pendientes_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function renderizarListaPendientes() {
             const container = document.getElementById('task-list-container');
+            if (!container) return;
             // FILTRO ESTRICTO: Solo pendientes
             const pendientes = appState.tareas.filter(t => t.estado === 'Pendiente');
 
@@ -2882,9 +3280,14 @@
 
             container.innerHTML = `
     <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">📋 Mis Tareas Pendientes</h3>
-        <span style="font-size: var(--font-size-sm); color: var(--color-gray-500);">${pendientes.length} pendiente${pendientes.length !== 1 ? 's' : ''}</span>
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2);">
+        <div style="display: flex; align-items: center; gap: var(--space-2);">
+            <h3 class="card-title">📋 Mis Tareas Pendientes</h3>
+            <span style="font-size: var(--font-size-xs); color: var(--color-gray-500); background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 12px;">${pendientes.length}</span>
+        </div>
+        <button class="btn btn-secondary" onclick="exportarPendientesExcel()" style="font-size: var(--font-size-xs); padding: var(--space-1) var(--space-3); border-radius: 8px; font-weight: 600;">
+            📥 Descargar Excel
+        </button>
       </div>
       <div id="lista-tareas" style="max-height: 450px; overflow-y: auto; padding-right: var(--space-2);">
         ${tareasOrdenadas.length === 0 ? `
@@ -3668,7 +4071,7 @@
           <span class="confirmation-value">${info.prioridad.charAt(0).toUpperCase() + info.prioridad.slice(1)}</span>
         </div>
       </div>
-      <p style="margin-bottom: var(--space-4); color: var(--color-gray-600);">¿Desea confirmarla y guardarla?</p>
+      <p style="margin-bottom: var(--space-4); color: #ffffff;">¿Desea confirmarla y guardarla?</p>
       <div class="confirmation-actions">
         <button class="btn btn-secondary" id="btn-cancel">Cancelar</button>
         <button class="btn btn-secondary" id="btn-modify">Modificar</button>
@@ -4077,6 +4480,94 @@
             renderizarCalendario();
 
             mostrarToast('Tarea modificada correctamente', 'success');
+        };
+
+        /**
+         * Abre el modal para crear una tarea de forma manual
+         */
+        window.abrirModalTareaManual = function () {
+            const hoy = new Date();
+            const fechaStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+            const horaStr = String(hoy.getHours()).padStart(2, '0') + ':' + String(hoy.getMinutes()).padStart(2, '0');
+
+            const dialog = document.getElementById('confirmation-dialog');
+
+            dialog.innerHTML = `
+    <div class="confirmation-content" style="max-width: 520px;">
+      <h2 class="confirmation-title">📝 Nueva Tarea Manual</h2>
+      <form id="form-manual" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="manual-titulo">Texto de la tarea:</label>
+          <input type="text" id="manual-titulo" class="form-input" placeholder="Ej: Pagar el recibo de energía" required 
+            style="color: var(--color-gray-800); background: var(--color-white);">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+          <div class="form-group">
+            <label class="form-label" for="manual-fecha">Fecha:</label>
+            <input type="date" id="manual-fecha" class="form-input" value="${fechaStr}" required
+              style="color: var(--color-gray-800); background: var(--color-white);">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="manual-hora">Hora:</label>
+            <input type="time" id="manual-hora" class="form-input" value="${horaStr}" required
+              style="color: var(--color-gray-800); background: var(--color-white);">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="manual-prioridad">Prioridad:</label>
+          <select id="manual-prioridad" class="form-input form-select" 
+            style="color: var(--color-gray-800); background: var(--color-white);">
+            <option value="baja">🟢 Baja</option>
+            <option value="media" selected>🟡 Media</option>
+            <option value="alta">🔴 Alta</option>
+          </select>
+        </div>
+      </form>
+      <div class="confirmation-actions" style="margin-top: var(--space-6);">
+        <button class="btn btn-secondary" onclick="cerrarModalEdicion()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarTareaManual()">🚀 Crear Tarea</button>
+      </div>
+    </div>
+  `;
+
+            dialog.classList.add('active');
+
+            setTimeout(() => {
+                document.getElementById('manual-titulo').focus();
+            }, 100);
+        };
+
+        /**
+         * Guarda la tarea creada en el modal manual
+         */
+        window.guardarTareaManual = function () {
+            const titulo = document.getElementById('manual-titulo').value.trim();
+            const fecha = document.getElementById('manual-fecha').value;
+            const hora = document.getElementById('manual-hora').value;
+            const prioridad = document.getElementById('manual-prioridad').value;
+
+            if (!titulo) {
+                mostrarToast('El texto de la tarea es obligatorio', 'error');
+                document.getElementById('manual-titulo').focus();
+                return;
+            }
+
+            if (!fecha || !hora) {
+                mostrarToast('La fecha y hora son obligatorias', 'error');
+                return;
+            }
+
+            const nuevaTarea = {
+                titulo: titulo,
+                fecha: fecha,
+                hora: hora,
+                prioridad: prioridad,
+                estado: 'Pendiente'
+            };
+
+            agregarTarea(nuevaTarea);
+            cerrarModalEdicion();
+            mostrarToast('Tarea creada correctamente', 'success');
         };
 
         /**

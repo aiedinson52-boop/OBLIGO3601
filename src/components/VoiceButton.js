@@ -40,22 +40,22 @@ export async function inicializarBotonVoz(container, opciones = {}) {
 
     // Renderizar componente
     container.innerHTML = `
-    <div class="voice-control" style="display: flex; flex-direction: column; align-items: center; gap: var(--space-4);">
-      <button class="voice-btn" id="voice-button" aria-label="Activar micrófono" title="Presione para hablar">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="voice-control" style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);">
+      <button class="voice-btn" id="voice-button" aria-label="Activar micrófono" title="Presione para hablar" style="width: 48px; height: 48px; font-size: 1.2rem; border-width: 2px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
           <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
           <line x1="12" x2="12" y1="19" y2="22"/>
         </svg>
       </button>
       
-      <div id="voice-status" class="voice-status" style="text-align: center;">
-        <p style="font-size: var(--font-size-sm); color: var(--color-gray-500);">
-          Presione el botón y hable
+      <div id="voice-status" class="voice-status" style="text-align: right;">
+        <p style="font-size: 10px; color: var(--color-gray-500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          Control por Voz
         </p>
       </div>
       
-      <div class="transcript-display" id="transcript-display">
+      <div class="transcript-display" id="transcript-display" style="display: none; font-size: 11px; padding: 4px 8px; background: rgba(0,0,0,0.4); border-radius: 6px; color: white;">
         Aquí aparecerá lo que diga...
       </div>
     </div>

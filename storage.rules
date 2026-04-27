@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Reglas para evidencias de tareas
+    match /evidencias/{userId}/{fileName} {
+      // Solo usuarios autenticados pueden leer/escribir sus propias evidencias
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 300 * 1024   // Máximo 300 KB
+                   && request.resource.contentType == 'application/pdf';  // Solo PDF
+      allow delete: if request.auth != null && request.auth.uid == userId;
+
+      // Admin puede leer evidencias de cualquier usuario
+      allow read: if request.auth != null
+                  && exists(/databases/(default)/documents/users/$(request.auth.uid))
+                  && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

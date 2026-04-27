@@ -7,6 +7,7 @@ import { obtenerTareasPendientes, marcarComoCumplida, marcarComoPendiente, elimi
 import { ETIQUETAS_PRIORIDAD, ETIQUETAS_CONTEXTO, formatearHora12, ESTADOS } from '../models/Task.js';
 import { formatearFecha } from '../data/colombianHolidays.js';
 import { calcularTiempoRestante } from '../services/AlertService.js';
+import { subirEvidencia, eliminarEvidencia, diasHastaExpiracion } from '../services/EvidenceService.js';
 
 let containerElement = null;
 let tareas = [];
@@ -75,6 +76,28 @@ function renderizarLista() {
   containerElement.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', manejarAccionTarea);
   });
+
+  // Event listeners para botones de evidencia
+  containerElement.querySelectorAll('[data-evidence-upload]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const tareaId = e.currentTarget.dataset.evidenceUpload;
+      manejarAdjuntarEvidencia(tareaId);
+    });
+  });
+
+  containerElement.querySelectorAll('[data-evidence-view]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const url = e.currentTarget.dataset.evidenceView;
+      window.open(url, '_blank');
+    });
+  });
+
+  containerElement.querySelectorAll('[data-evidence-delete]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const tareaId = e.currentTarget.dataset.evidenceDelete;
+      await manejarEliminarEvidencia(tareaId);
+    });
+  });
 }
 
 /**
@@ -129,6 +152,7 @@ function renderizarTareaCard(tarea) {
       <div class="task-meta">
         <span class="task-badge">📅 ${formatearFecha(fecha, { formato: 'corto' })}</span>
         <span class="task-badge">🕐 ${formatearHora12(tarea.hora)}</span>
+        ${renderizarBotonEvidencia(tarea)}
         <span class="task-badge context-${tarea.contexto}">${getContextoIcon(tarea.contexto)} ${ETIQUETAS_CONTEXTO[tarea.contexto]}</span>
         <span class="task-badge priority-badge">${getPrioridadIcon(tarea.prioridad)} ${ETIQUETAS_PRIORIDAD[tarea.prioridad]}</span>
       </div>
@@ -554,6 +578,139 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/**
+ * Renderiza el botón de evidencia junto a la hora
+ * @param {Object} tarea - Tarea actual
+ * @returns {string} HTML del botón
+ */
+function renderizarBotonEvidencia(tarea) {
+  if (tarea.evidencia && tarea.evidencia.url) {
+    const diasRestantes = diasHastaExpiracion(tarea.evidencia.expiraEn);
+    const colorDias = diasRestantes <= 5 ? '#ef4444' : diasRestantes <= 15 ? '#f59e0b' : '#10b981';
+    return `
+      <span class="evidence-attached" style="display: inline-flex; align-items: center; gap: 4px;">
+        <button class="btn-evidence-view" data-evidence-view="${tarea.evidencia.url}" title="Ver evidencia: ${escapeHtml(tarea.evidencia.nombreOriginal)}" style="
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          padding: 3px 8px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        ">📎 Ver PDF</button>
+        <span style="font-size: 0.6rem; color: ${colorDias}; font-weight: 500;" title="Expira en ${diasRestantes} día(s)">${diasRestantes}d</span>
+        <button class="btn-evidence-delete" data-evidence-delete="${tarea.id}" title="Eliminar evidencia" style="
+          background: none;
+          border: none;
+          color: #ef4444;
+          cursor: pointer;
+          font-size: 0.7rem;
+          padding: 2px;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        ">✕</button>
+      </span>
+    `;
+  }
+
+  return `
+    <button class="btn-evidence-upload" data-evidence-upload="${tarea.id}" title="Adjuntar evidencia PDF (máx. 300 KB)" style="
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      border: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+      white-space: nowrap;
+    ">📎 Adjuntar Evidencia</button>
+  `;
+}
+
+/**
+ * Maneja la acción de adjuntar evidencia
+ * @param {string} tareaId - ID de la tarea
+ */
+function manejarAdjuntarEvidencia(tareaId) {
+  // Crear input file oculto
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/pdf';
+  input.style.display = 'none';
+
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Mostrar indicador de carga
+    const btn = containerElement.querySelector(`[data-evidence-upload="${tareaId}"]`);
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Subiendo...';
+      btn.style.opacity = '0.7';
+    }
+
+    try {
+      await subirEvidencia(file, tareaId, currentUserId);
+      mostrarNotificacion('✅ Evidencia adjuntada correctamente', 'success');
+
+      // Recargar lista
+      await cargarTareas();
+      renderizarLista();
+    } catch (error) {
+      console.error('Error adjuntando evidencia:', error);
+      mostrarNotificacion(`❌ ${error.message}`, 'error');
+
+      // Restaurar botón
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '📎 Adjuntar Evidencia';
+        btn.style.opacity = '1';
+      }
+    }
+
+    input.remove();
+  });
+
+  document.body.appendChild(input);
+  input.click();
+}
+
+/**
+ * Maneja la eliminación de evidencia de una tarea
+ * @param {string} tareaId - ID de la tarea
+ */
+async function manejarEliminarEvidencia(tareaId) {
+  const tarea = tareas.find(t => t.id === tareaId);
+  if (!tarea || !tarea.evidencia) return;
+
+  if (!confirm('¿Desea eliminar la evidencia adjunta?')) return;
+
+  try {
+    await eliminarEvidencia(tarea.evidencia.storagePath, tareaId, currentUserId);
+    mostrarNotificacion('🗑️ Evidencia eliminada', 'info');
+
+    // Recargar lista
+    await cargarTareas();
+    renderizarLista();
+  } catch (error) {
+    console.error('Error eliminando evidencia:', error);
+    mostrarNotificacion(`❌ Error al eliminar: ${error.message}`, 'error');
+  }
 }
 
 /**
